@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+
+# Accidental local duplicate from earlier file copy
+backend/app/chunkers/chunkers/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+*.tsbuildinfo
+
+# Local runtime and editor files
+.env
+.env.*
+!.env.example
+.idea/
+.vscode/
+*.log
+*.tmp
+*.bak
+
+# Large local datasets / archives
+*.zip
+*.7z
+*.rar
+*.tar
+*.tar.gz
+*.gz
+
+# Model and vector caches
+models/
+model_cache/
+*.faiss
+*.npy
+*.npz
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
