@@ -1,0 +1,31 @@
+{
+  "strategy": "semantic",
+  "input_path": "E:\\practical_training\\HSC_RAG\\data\\processed\\qasper\\train\\governed_documents.jsonl",
+  "output_path": "E:\\practical_training\\HSC_RAG\\data\\processed\\qasper\\train\\chunks_semantic.jsonl",
+  "documents": 5,
+  "chunks": 101,
+  "total_tokens": 22314,
+  "avg_tokens": 220.93,
+  "min_tokens": 127,
+  "max_tokens": 501,
+  "quality_flag_counts": {
+    "final_flush": 5,
+    "length_ok": 99,
+    "mixed_title_paths": 38,
+    "protected_block_intact": 6,
+    "semantic_baseline": 101,
+    "semantic_boundary": 96,
+    "short_chunk": 2,
+    "source_anchor_complete": 101,
+    "title_path_consistent": 45
+  },
+  "config": {
+    "min_tokens": 160,
+    "target_tokens": 512,
+    "max_tokens": 768,
+    "breakpoint_percentile": 75.0,
+    "include_title_context": false,
+    "protect_blocks": true
+  },
+  "warnings": []
+}

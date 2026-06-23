@@ -1,0 +1,32 @@
+{
+  "strategy": "hsc_rag",
+  "input_path": "E:\\practical_training\\HSC_RAG\\data\\processed\\qasper\\train\\governed_documents.jsonl",
+  "output_path": "E:\\practical_training\\HSC_RAG\\data\\processed\\qasper\\train\\chunks_hsc_rag.jsonl",
+  "documents": 5,
+  "chunks": 61,
+  "total_tokens": 23598,
+  "avg_tokens": 386.85,
+  "min_tokens": 140,
+  "max_tokens": 900,
+  "quality_flag_counts": {
+    "final_flush": 5,
+    "hsc_structure_aware": 61,
+    "length_ok": 59,
+    "max_length_boundary": 1,
+    "mixed_title_paths": 16,
+    "protected_block_intact": 5,
+    "section_boundary_respected": 55,
+    "short_chunk": 2,
+    "source_anchor_complete": 61,
+    "title_path_consistent": 38
+  },
+  "config": {
+    "min_tokens": 180,
+    "target_tokens": 512,
+    "max_tokens": 900,
+    "include_title_context": true,
+    "merge_short_chunks": true,
+    "protect_blocks": true
+  },
+  "warnings": []
+}

@@ -1,0 +1,36 @@
+{
+  "strategy": "recursive",
+  "input_path": "E:\\practical_training\\HSC_RAG\\data\\processed\\qasper\\train\\governed_documents.jsonl",
+  "output_path": "E:\\practical_training\\HSC_RAG\\data\\processed\\qasper\\train\\chunks_recursive.jsonl",
+  "documents": 5,
+  "chunks": 52,
+  "total_tokens": 22983,
+  "avg_tokens": 441.98,
+  "min_tokens": 107,
+  "max_tokens": 510,
+  "quality_flag_counts": {
+    "length_ok": 51,
+    "mixed_title_paths": 36,
+    "protected_block_intact": 7,
+    "recursive_baseline": 52,
+    "short_chunk": 1,
+    "source_anchor_complete": 52,
+    "title_path_consistent": 7
+  },
+  "config": {
+    "target_tokens": 512,
+    "overlap_tokens": 64,
+    "min_tokens": 128,
+    "max_tokens": 512,
+    "include_title_context": false,
+    "separators": [
+      "\n\n",
+      "\n",
+      ". ",
+      "; ",
+      ", ",
+      " "
+    ]
+  },
+  "warnings": []
+}

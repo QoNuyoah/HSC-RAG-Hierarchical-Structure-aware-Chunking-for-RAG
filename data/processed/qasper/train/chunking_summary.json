@@ -1,0 +1,130 @@
+{
+  "reports": [
+    {
+      "strategy": "fixed",
+      "input_path": "E:\\practical_training\\HSC_RAG\\data\\processed\\qasper\\train\\governed_documents.jsonl",
+      "output_path": "E:\\practical_training\\HSC_RAG\\data\\processed\\qasper\\train\\chunks_fixed.jsonl",
+      "documents": 5,
+      "chunks": 50,
+      "total_tokens": 22314,
+      "avg_tokens": 446.28,
+      "min_tokens": 146,
+      "max_tokens": 511,
+      "quality_flag_counts": {
+        "fixed_window_baseline": 50,
+        "length_ok": 50,
+        "mixed_title_paths": 32,
+        "protected_block_intact": 6,
+        "source_anchor_complete": 50,
+        "title_path_consistent": 7
+      },
+      "config": {
+        "target_tokens": 512,
+        "overlap_tokens": 64,
+        "min_tokens": 128,
+        "max_tokens": 512,
+        "include_title_context": false
+      },
+      "warnings": []
+    },
+    {
+      "strategy": "recursive",
+      "input_path": "E:\\practical_training\\HSC_RAG\\data\\processed\\qasper\\train\\governed_documents.jsonl",
+      "output_path": "E:\\practical_training\\HSC_RAG\\data\\processed\\qasper\\train\\chunks_recursive.jsonl",
+      "documents": 5,
+      "chunks": 52,
+      "total_tokens": 22983,
+      "avg_tokens": 441.98,
+      "min_tokens": 107,
+      "max_tokens": 510,
+      "quality_flag_counts": {
+        "length_ok": 51,
+        "mixed_title_paths": 36,
+        "protected_block_intact": 7,
+        "recursive_baseline": 52,
+        "short_chunk": 1,
+        "source_anchor_complete": 52,
+        "title_path_consistent": 7
+      },
+      "config": {
+        "target_tokens": 512,
+        "overlap_tokens": 64,
+        "min_tokens": 128,
+        "max_tokens": 512,
+        "include_title_context": false,
+        "separators": [
+          "\n\n",
+          "\n",
+          ". ",
+          "; ",
+          ", ",
+          " "
+        ]
+      },
+      "warnings": []
+    },
+    {
+      "strategy": "semantic",
+      "input_path": "E:\\practical_training\\HSC_RAG\\data\\processed\\qasper\\train\\governed_documents.jsonl",
+      "output_path": "E:\\practical_training\\HSC_RAG\\data\\processed\\qasper\\train\\chunks_semantic.jsonl",
+      "documents": 5,
+      "chunks": 101,
+      "total_tokens": 22314,
+      "avg_tokens": 220.93,
+      "min_tokens": 127,
+      "max_tokens": 501,
+      "quality_flag_counts": {
+        "final_flush": 5,
+        "length_ok": 99,
+        "mixed_title_paths": 38,
+        "protected_block_intact": 6,
+        "semantic_baseline": 101,
+        "semantic_boundary": 96,
+        "short_chunk": 2,
+        "source_anchor_complete": 101,
+        "title_path_consistent": 45
+      },
+      "config": {
+        "min_tokens": 160,
+        "target_tokens": 512,
+        "max_tokens": 768,
+        "breakpoint_percentile": 75.0,
+        "include_title_context": false,
+        "protect_blocks": true
+      },
+      "warnings": []
+    },
+    {
+      "strategy": "hsc_rag",
+      "input_path": "E:\\practical_training\\HSC_RAG\\data\\processed\\qasper\\train\\governed_documents.jsonl",
+      "output_path": "E:\\practical_training\\HSC_RAG\\data\\processed\\qasper\\train\\chunks_hsc_rag.jsonl",
+      "documents": 5,
+      "chunks": 61,
+      "total_tokens": 23598,
+      "avg_tokens": 386.85,
+      "min_tokens": 140,
+      "max_tokens": 900,
+      "quality_flag_counts": {
+        "final_flush": 5,
+        "hsc_structure_aware": 61,
+        "length_ok": 59,
+        "max_length_boundary": 1,
+        "mixed_title_paths": 16,
+        "protected_block_intact": 5,
+        "section_boundary_respected": 55,
+        "short_chunk": 2,
+        "source_anchor_complete": 61,
+        "title_path_consistent": 38
+      },
+      "config": {
+        "min_tokens": 180,
+        "target_tokens": 512,
+        "max_tokens": 900,
+        "include_title_context": true,
+        "merge_short_chunks": true,
+        "protect_blocks": true
+      },
+      "warnings": []
+    }
+  ]
+}

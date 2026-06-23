@@ -1,0 +1,22 @@
+{
+  "split": "train",
+  "documents": 5,
+  "blocks": 420,
+  "queries": 33,
+  "answerable_queries": 28,
+  "unanswerable_queries": 5,
+  "evidence_items": 94,
+  "matched_evidence_items": 93,
+  "evidence_match_rate": 0.9893617021276596,
+  "warnings": [],
+  "zip_path": "E:\\practical_training\\HSC_RAG\\QASPER.zip",
+  "output_dir": "E:\\practical_training\\HSC_RAG\\data\\processed\\qasper\\train",
+  "limit_docs": 5,
+  "artifacts": {
+    "governed_documents": "governed_documents.jsonl",
+    "blocks": "blocks.jsonl",
+    "queries": "queries.csv",
+    "gold_evidence": "gold_evidence.jsonl",
+    "conversion_report": "conversion_report.json"
+  }
+}

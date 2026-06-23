@@ -1,0 +1,53 @@
+{
+  "strategy": "hsc_rag",
+  "retriever": "hybrid",
+  "chunks_path": "E:\\practical_training\\HSC_RAG\\data\\processed\\qasper\\train\\chunks_hsc_rag.jsonl",
+  "results_path": "E:\\practical_training\\HSC_RAG\\data\\processed\\qasper\\train\\retrieval_results_hsc_rag_hybrid.jsonl",
+  "chunks": 61,
+  "queries_total_in_gold_file": 33,
+  "queries_evaluated": 28,
+  "queries_skipped": {
+    "unanswerable": 5,
+    "no_gold_blocks": 0
+  },
+  "search_scope": "same_doc",
+  "index_fields": [
+    "text"
+  ],
+  "retriever_config": {
+    "retriever": "hybrid",
+    "alpha_bm25": 0.55,
+    "dense": {
+      "encoder_request": "tfidf_svd",
+      "encoder_name": "tfidf_svd",
+      "model_name": null,
+      "include_metadata": false,
+      "svd_dim": 128,
+      "local_files_only": true,
+      "warning": null,
+      "faiss_index": "IndexFlatIP",
+      "embedding_dim": 60
+    }
+  },
+  "metric_definitions": {
+    "recall@k": "Mean block-level evidence recall: covered gold_block_ids in top-k chunks divided by all gold_block_ids.",
+    "hit_rate@k": "Mean query-level hit rate: at least one gold evidence block appears in top-k chunks.",
+    "full_recall_rate@k": "Mean query-level complete evidence coverage: all gold evidence blocks appear in top-k chunks.",
+    "mrr": "Mean reciprocal rank of the first chunk containing any gold evidence block.",
+    "ndcg@5": "Binary chunk-relevance nDCG: a chunk is relevant if it contains at least one gold evidence block."
+  },
+  "metrics": {
+    "recall@1": 0.28869,
+    "hit_rate@1": 0.392857,
+    "full_recall_rate@1": 0.178571,
+    "recall@3": 0.514881,
+    "hit_rate@3": 0.607143,
+    "full_recall_rate@3": 0.392857,
+    "recall@5": 0.705357,
+    "hit_rate@5": 0.785714,
+    "full_recall_rate@5": 0.607143,
+    "mrr": 0.550271,
+    "ndcg@5": 0.526316,
+    "avg_gold_blocks_per_query": 1.678571
+  }
+}
