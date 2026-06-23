@@ -1,0 +1,2 @@
+"""HSC-RAG backend package."""
+
