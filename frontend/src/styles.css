@@ -372,6 +372,13 @@ th {
   font-size: 13px;
 }
 
+.scope-note {
+  margin: 8px 0 0;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 .gold-box {
   min-width: 110px;
   padding: 10px;
@@ -561,4 +568,3 @@ code {
     margin: 14px;
   }
 }
-

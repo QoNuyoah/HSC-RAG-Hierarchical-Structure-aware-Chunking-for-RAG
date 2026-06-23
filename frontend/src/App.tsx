@@ -156,8 +156,8 @@ function App() {
 
           <div className="query-tools">
             <div className="segmented">
-              <button className={queryMode === 'bad' ? 'active' : ''} onClick={() => setQueryMode('bad')}>Bad Cases</button>
-              <button className={queryMode === 'all' ? 'active' : ''} onClick={() => setQueryMode('all')}>All Queries</button>
+              <button className={queryMode === 'bad' ? 'active' : ''} onClick={() => setQueryMode('bad')} title="优先展示 HSC 缺失、基线领先或策略分歧的样例">Bad Cases</button>
+              <button className={queryMode === 'all' ? 'active' : ''} onClick={() => setQueryMode('all')} title="展示全部参与评估的 query">All Queries</button>
             </div>
             <label className="search-box">
               <Search size={16} />
@@ -263,9 +263,10 @@ function ComparisonView({ comparison }: { comparison: QueryComparison }) {
     <>
       <div className="comparison-header">
         <div>
-          <p className="eyebrow">{comparison.retriever.toUpperCase()} · {caseLabel(comparison.case_type)}</p>
+          <p className="eyebrow">{comparison.retriever.toUpperCase()} · 当前 Query Top-5 对比 · {caseLabel(comparison.case_type)}</p>
           <h2>{comparison.question}</h2>
           <p className="doc-line">{comparison.doc_id}</p>
+          <p className="scope-note">右侧四列是当前选中问题的逐 query 指标；全局平均指标请看左侧 Retrieval Metrics 表格。</p>
         </div>
         <div className="gold-box">
           <span>Gold Blocks</span>
@@ -287,7 +288,7 @@ function ComparisonView({ comparison }: { comparison: QueryComparison }) {
               <div className="strategy-head">
                 <div>
                   <h3>{strategyNames[strategy]}</h3>
-                  <p>R@5 {format(data?.recall_by_k?.['5'])} · MRR {format(data?.reciprocal_rank)}</p>
+                  <p>当前问题 R@5 {format(data?.recall_by_k?.['5'])} · RR {format(data?.reciprocal_rank)}</p>
                 </div>
                 {data?.missing_gold_blocks_at_max_k?.length ? (
                   <AlertTriangle className="status-icon miss" size={18} />
@@ -327,4 +328,3 @@ function ComparisonView({ comparison }: { comparison: QueryComparison }) {
 }
 
 export default App;
-
