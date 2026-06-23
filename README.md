@@ -138,19 +138,6 @@ lucide-react
 data\processed\qasper\train
 ```
 
-原始大文件不会提交到 GitHub：
-
-```text
-QASPER.zip
-DuReader.zip
-```
-
-原因：
-
-- GitHub 不适合存储数 GB 级数据压缩包。
-- 当前项目展示和复现实验看板只需要 `data/processed/qasper/train` 下的小规模处理结果。
-- `.gitignore` 已排除 `*.zip`、`node_modules`、`dist`、`__pycache__` 等不应提交的内容。
-
 ## 数据转换
 
 在项目根目录执行：
@@ -372,25 +359,4 @@ HSC-RAG 的攻关点在于：
 - 为每个 chunk 输出 `source_blocks`、`source_anchor`、`quality_flags`、`tags`、`summary` 等可解释字段。
 - 用公开数据集的 question/evidence 标注自动评估分段对 RAG 检索的影响。
 
-## GitHub 上传说明
-
-本仓库应提交代码、文档、前端源码和小规模处理后实验结果。
-
-不应提交：
-
-```text
-*.zip
-frontend/node_modules
-frontend/dist
-__pycache__
-模型缓存
-```
-
-如果网络可用，提交并推送：
-
-```powershell
-cd /d E:\practical_training\HSC_RAG
-git status
-git push origin main
-```
 
