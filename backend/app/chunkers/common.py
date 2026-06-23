@@ -16,6 +16,9 @@ from app.core.schemas import ChunkSourceAnchor, GovernedBlock, GovernedDocument,
 WHITESPACE_RE = re.compile(r"\s+")
 SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?。！？])\s+")
 CJK_RE = re.compile(r"[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]")
+ENTITY_RE = re.compile(
+    r"\b(?:[A-Z]{2,}[A-Za-z0-9+\-]*|[A-Z][A-Za-z0-9+\-]{2,}(?:\s+[A-Z][A-Za-z0-9+\-]{2,}){0,3})\b"
+)
 CONTENT_BLOCK_TYPES = {"abstract", "paragraph", "list", "table", "figure", "code", "formula", "caption"}
 PROTECTED_BLOCK_TYPES = {"table", "figure", "code", "formula", "list"}
 STOPWORDS = {
@@ -39,6 +42,22 @@ STOPWORDS = {
     "method",
     "results",
     "approach",
+}
+ENTITY_STOPWORDS = {
+    "Abstract",
+    "Introduction",
+    "Related Work",
+    "Proposed Method",
+    "Experiments",
+    "Conclusion",
+    "Appendices",
+    "Acknowledgments",
+    "BIBREF",
+    "FIGREF",
+    "TABREF",
+    "SECREF",
+    "FLOAT",
+    "SELECTED",
 }
 
 
@@ -217,7 +236,22 @@ def derive_entity_tags(blocks: list[GovernedBlock]) -> list[str]:
         for tag in block.entity_tags:
             if tag not in tags:
                 tags.append(tag)
-    return tags
+        for match in ENTITY_RE.finditer(block.text):
+            tag = normalize_text(match.group(0))
+            if (
+                tag
+                and tag not in ENTITY_STOPWORDS
+                and not tag.startswith(("BIBREF", "FIGREF", "TABREF", "SECREF"))
+                and tag not in tags
+            ):
+                tags.append(tag)
+            if len(tags) >= 12:
+                return tags
+    if not tags:
+        for tag in derive_tags(blocks, limit=4):
+            if tag not in tags:
+                tags.append(tag)
+    return tags[:12]
 
 
 def summarize_text(text: str, max_words: int = 48) -> str:

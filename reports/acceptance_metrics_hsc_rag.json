@@ -1,0 +1,75 @@
+{
+  "strategy": "hsc_rag",
+  "chunks": 61,
+  "content_blocks": 320,
+  "protected_blocks": 32,
+  "output_field_completeness_rate": 100.0,
+  "source_anchor_completeness_rate": 100.0,
+  "target_length_hit_rate": 96.72,
+  "no_sentence_break_rate": 100.0,
+  "protected_block_integrity_rate": 100.0,
+  "retrieval_uplift_vs_fixed_bm25": {
+    "recall@1": {
+      "fixed": 0.157738,
+      "hsc_rag": 0.217262,
+      "absolute_delta": 0.059524,
+      "relative_uplift_percent": 37.74
+    },
+    "recall@3": {
+      "fixed": 0.4375,
+      "hsc_rag": 0.568452,
+      "absolute_delta": 0.130952,
+      "relative_uplift_percent": 29.93
+    },
+    "recall@5": {
+      "fixed": 0.633929,
+      "hsc_rag": 0.723214,
+      "absolute_delta": 0.089285,
+      "relative_uplift_percent": 14.08
+    },
+    "mrr": {
+      "fixed": 0.450993,
+      "hsc_rag": 0.515704,
+      "absolute_delta": 0.064711,
+      "relative_uplift_percent": 14.35
+    },
+    "ndcg@5": {
+      "fixed": 0.438077,
+      "hsc_rag": 0.509134,
+      "absolute_delta": 0.071057,
+      "relative_uplift_percent": 16.22
+    }
+  },
+  "field_non_empty_counts": {
+    "tags": 61,
+    "summary": 61,
+    "entity_tags": 61,
+    "source_blocks": 61
+  },
+  "quality_flag_counts": {
+    "final_flush": 5,
+    "hsc_structure_aware": 61,
+    "length_ok": 59,
+    "max_length_boundary": 1,
+    "mixed_title_paths": 16,
+    "protected_block_intact": 5,
+    "section_boundary_respected": 55,
+    "short_chunk": 2,
+    "source_anchor_complete": 61,
+    "title_path_consistent": 38
+  },
+  "protected_block_types": {
+    "figure": 10,
+    "table": 22
+  },
+  "acceptance_status": {
+    "期望输出字段完整": "达标",
+    "不破句率": "达标",
+    "表格公式代码整体成块率": "达标",
+    "目标长度区间命中率": "达标",
+    "原文回链完整率": "达标",
+    "下游检索提升": "达标",
+    "语义完整人工评价": "待人工评价",
+    "标签与摘要人工评价": "待人工评价"
+  }
+}

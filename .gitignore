@@ -47,3 +47,6 @@ model_cache/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Local course documents
+各类文档/
