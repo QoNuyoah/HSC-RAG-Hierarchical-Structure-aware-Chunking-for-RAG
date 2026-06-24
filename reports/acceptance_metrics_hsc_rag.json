@@ -62,6 +62,21 @@
     "figure": 10,
     "table": 22
   },
+  "manual_evaluation": {
+    "path": "E:\\practical_training\\HSC_RAG\\reports\\manual_eval_hsc_rag.csv",
+    "rows": 20,
+    "completed_rows": 20,
+    "semantic_integrity": {
+      "avg": 4.67,
+      "min": 4.0,
+      "max": 5.0
+    },
+    "tag_summary": {
+      "avg": 4.22,
+      "min": 3.5,
+      "max": 4.5
+    }
+  },
   "acceptance_status": {
     "期望输出字段完整": "达标",
     "不破句率": "达标",
@@ -69,7 +84,7 @@
     "目标长度区间命中率": "达标",
     "原文回链完整率": "达标",
     "下游检索提升": "达标",
-    "语义完整人工评价": "待人工评价",
-    "标签与摘要人工评价": "待人工评价"
+    "语义完整人工评价": "达标",
+    "标签与摘要人工评价": "达标"
   }
 }

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 from collections import Counter, defaultdict
 from pathlib import Path
@@ -54,6 +55,64 @@ def pass_fail(value: float, threshold: float) -> str:
     return "达标" if value >= threshold else "未达标"
 
 
+def read_manual_eval(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        return {
+            "path": str(path),
+            "completed_rows": 0,
+            "semantic_integrity": None,
+            "tag_summary": None,
+        }
+
+    rows = list(csv.DictReader(path.open("r", encoding="utf-8-sig", newline="")))
+    semantic_scores: list[float] = []
+    tag_summary_scores: list[float] = []
+    completed_rows = 0
+    for row in rows:
+        try:
+            semantic_score = float((row.get("semantic_integrity_score") or "").strip())
+            tag_summary_score = float((row.get("tag_summary_score") or "").strip())
+        except ValueError:
+            continue
+        if 1 <= semantic_score <= 5 and 1 <= tag_summary_score <= 5:
+            semantic_scores.append(semantic_score)
+            tag_summary_scores.append(tag_summary_score)
+            completed_rows += 1
+
+    def summarize(scores: list[float]) -> dict[str, Any] | None:
+        if not scores:
+            return None
+        return {
+            "avg": round(sum(scores) / len(scores), 2),
+            "min": round(min(scores), 2),
+            "max": round(max(scores), 2),
+        }
+
+    return {
+        "path": str(path),
+        "rows": len(rows),
+        "completed_rows": completed_rows,
+        "semantic_integrity": summarize(semantic_scores),
+        "tag_summary": summarize(tag_summary_scores),
+    }
+
+
+def manual_eval_status(manual_eval: dict[str, Any], key: str) -> str:
+    item = manual_eval.get(key)
+    if not item:
+        return "待人工评价"
+    if manual_eval.get("completed_rows", 0) < 20:
+        return "样本不足"
+    return "达标" if item["avg"] >= 4.0 and item["min"] >= 3.0 else "未达标"
+
+
+def manual_eval_value(manual_eval: dict[str, Any], key: str) -> str:
+    item = manual_eval.get(key)
+    if not item:
+        return "明天补充"
+    return f"抽样 {manual_eval['completed_rows']} 个 chunks，均分 {item['avg']}/5，最低 {item['min']}/5"
+
+
 def field_ok(chunk: dict[str, Any]) -> bool:
     for field, expected_type in REQUIRED_CHUNK_FIELDS.items():
         value = chunk.get(field)
@@ -89,6 +148,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data-dir", default="data/processed/qasper/train")
     parser.add_argument("--strategy", default="hsc_rag")
+    parser.add_argument("--manual-eval-csv", default="reports/manual_eval_hsc_rag.csv")
     parser.add_argument("--output-json", default="reports/acceptance_metrics_hsc_rag.json")
     parser.add_argument("--output-md", default="reports/acceptance_checklist.md")
     args = parser.parse_args()
@@ -98,6 +158,7 @@ def main() -> None:
     blocks = read_jsonl(data_dir / "blocks.jsonl")
     chunk_report = read_json(data_dir / f"chunk_report_{args.strategy}.json")
     retrieval = read_json(data_dir / "retrieval_eval_multi_summary.json")
+    manual_eval = read_manual_eval(Path(args.manual_eval_csv))
 
     members = source_membership(chunks)
     content_blocks = [block for block in blocks if block.get("type") in CONTENT_BLOCK_TYPES and block.get("text")]
@@ -163,6 +224,7 @@ def main() -> None:
         },
         "quality_flag_counts": chunk_report.get("quality_flag_counts", {}),
         "protected_block_types": dict(Counter(block.get("type") for block in protected_blocks)),
+        "manual_evaluation": manual_eval,
         "acceptance_status": {
             "期望输出字段完整": pass_fail(output_rate, 1.0),
             "不破句率": pass_fail(no_sentence_break_rate, 1.0),
@@ -170,8 +232,8 @@ def main() -> None:
             "目标长度区间命中率": pass_fail(length_rate, 0.90),
             "原文回链完整率": pass_fail(anchor_rate, 1.0),
             "下游检索提升": "达标" if retrieval_ok else "未达标",
-            "语义完整人工评价": "待人工评价",
-            "标签与摘要人工评价": "待人工评价",
+            "语义完整人工评价": manual_eval_status(manual_eval, "semantic_integrity"),
+            "标签与摘要人工评价": manual_eval_status(manual_eval, "tag_summary"),
         },
     }
 
@@ -186,8 +248,8 @@ def main() -> None:
         ("目标长度区间命中率", "quality_flags 中 length_ok 的 chunk 占比", f"{metrics['target_length_hit_rate']}%", metrics["acceptance_status"]["目标长度区间命中率"]),
         ("原文回链完整率", "source_anchor 与 source_blocks 完整一致", f"{metrics['source_anchor_completeness_rate']}%", metrics["acceptance_status"]["原文回链完整率"]),
         ("下游检索提升", "HSC-RAG 相对 fixed 的 BM25 Recall@5 与 nDCG@5 相对提升均 >= 10%", f"Recall@5 +{uplift.get('recall@5', {}).get('relative_uplift_percent')}%; nDCG@5 +{uplift.get('ndcg@5', {}).get('relative_uplift_percent')}%", metrics["acceptance_status"]["下游检索提升"]),
-        ("语义完整", "需人工抽样评价", "明天补充", "待人工评价"),
-        ("打标与摘要", "需人工抽样评价标签准确率与摘要忠实度", "明天补充", "待人工评价"),
+        ("语义完整", "人工抽样评价 chunk 是否围绕同一主题、上下文是否足够、是否无明显断裂", manual_eval_value(manual_eval, "semantic_integrity"), metrics["acceptance_status"]["语义完整人工评价"]),
+        ("打标与摘要", "人工抽样评价标签准确率、实体标签可用性与摘要忠实度", manual_eval_value(manual_eval, "tag_summary"), metrics["acceptance_status"]["标签与摘要人工评价"]),
     ]
     md = [
         "# HSC-RAG 验收指标对照表",
@@ -210,7 +272,7 @@ def main() -> None:
             "",
             "- “不破句率”采用工程可验证口径：HSC-RAG 以 `GovernedBlock` 为最小治理内容单元进行封装；当前样本中每个内容块仅出现在一个 HSC-RAG chunk 中，说明没有发生跨 chunk 的句中/块内截断。",
             "- “期望输出字段完整”检查每个 chunk 是否包含 `text/token_count/tags/summary/entity_tags/source_blocks/source_anchor/quality_flags` 等下游消费必需字段。",
-            "- “语义完整”和“打标与摘要”属于人工评价项，建议后续抽样 20 个 chunks 进行人工评分后补充。",
+            f"- “语义完整”和“打标与摘要”读取 `{args.manual_eval_csv}`。建议抽样 20 个 chunks；均分 >= 4.0 且最低分 >= 3.0 记为达标。",
             "",
         ]
     )
@@ -223,4 +285,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
