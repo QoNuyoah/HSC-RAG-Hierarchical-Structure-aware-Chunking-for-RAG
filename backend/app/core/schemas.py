@@ -183,3 +183,42 @@ class ChunkRunReport(BaseModel):
     quality_flag_counts: dict[str, int] = Field(default_factory=dict)
     config: dict[str, Any] = Field(default_factory=dict)
     warnings: list[str] = Field(default_factory=list)
+
+
+class ChunkAgentRequest(BaseModel):
+    """Standard online chunking request for upstream conversion pipelines."""
+
+    document: GovernedDocument
+    strategy: ChunkStrategy = "hsc_rag"
+    config: dict[str, Any] = Field(default_factory=dict)
+    include_report: bool = True
+
+
+class ChunkAgentResponse(BaseModel):
+    """Standard online chunking response emitted by the chunking agent."""
+
+    agent: str = "hsc-rag"
+    strategy: ChunkStrategy
+    doc_id: str
+    chunks: list[RagChunk]
+    chunk_count: int
+    report: dict[str, Any] = Field(default_factory=dict)
+
+
+class ChunkBatchAgentRequest(BaseModel):
+    """Batch variant of the online chunking contract."""
+
+    documents: list[GovernedDocument]
+    strategy: ChunkStrategy = "hsc_rag"
+    config: dict[str, Any] = Field(default_factory=dict)
+    include_report: bool = True
+
+
+class ChunkBatchAgentResponse(BaseModel):
+    """Batch response for conversion pipelines that submit multiple documents."""
+
+    agent: str = "hsc-rag"
+    strategy: ChunkStrategy
+    document_count: int
+    total_chunks: int
+    results: list[ChunkAgentResponse]

@@ -23,6 +23,8 @@ QASPER -> GovernedDocument
 
 已实现内容：
 
+- 可运行的 HSC-RAG 分段智能体后端服务，提供标准 HTTP 接口供上游转换流水线调用。
+- 标准在线接口：输入 `GovernedDocument` 结构化全文，输出 `RagChunk[]` chunk 序列。
 - `QASPER -> GovernedDocument` 数据适配器。
 - `GovernedDocument / GovernedBlock / GovernedQuery / RagChunk` 等核心数据契约。
 - 四种分段策略：
@@ -290,6 +292,8 @@ http://127.0.0.1:8000/api/health
 主要 API：
 
 ```text
+POST /api/v1/chunk
+POST /api/v1/chunk/batch
 GET /api/overview
 GET /api/metrics?retriever=bm25
 GET /api/metrics?retriever=dense
@@ -299,6 +303,102 @@ GET /api/bad-cases?retriever=bm25
 GET /api/queries/{query_id}/comparison?retriever=bm25
 POST /api/cache/refresh
 ```
+
+## 智能体标准接口
+
+HSC-RAG 的在线交付接口是：
+
+```text
+POST http://127.0.0.1:8000/api/v1/chunk
+```
+
+接口定位：
+
+- 调用方：上游转换流水线或数据治理流水线。
+- 输入：结构化全文 `GovernedDocument`，即已经完成口径统一、结构化治理和来源锚定的文档对象。
+- 输出：`RagChunk[]`，每个 chunk 含正文、长度、标题路径、来源块、原文回链、标签、摘要、实体标签和质量标记。
+- 默认策略：`hsc_rag`。
+- 可选策略：`fixed`、`recursive`、`semantic`、`hsc_rag`，用于实验对比。
+
+请求示例：
+
+```json
+{
+  "strategy": "hsc_rag",
+  "config": {
+    "target_tokens": 512,
+    "max_tokens": 900,
+    "include_title_context": true
+  },
+  "include_report": true,
+  "document": {
+    "doc_id": "demo_doc_001",
+    "dataset": "demo",
+    "split": "test",
+    "source_doc_id": "demo_doc_001",
+    "title": "Demo Governed Document",
+    "normalization_status": "provided_by_upstream",
+    "blocks": [
+      {
+        "block_id": "demo_doc_001_p001",
+        "doc_id": "demo_doc_001",
+        "type": "paragraph",
+        "text": "This is a governed paragraph ready for chunk packaging.",
+        "order": 1,
+        "level": 1,
+        "title_path": ["Introduction"],
+        "source_anchor": {
+          "dataset": "demo",
+          "split": "test",
+          "source_doc_id": "demo_doc_001",
+          "section_name": "Introduction"
+        }
+      }
+    ]
+  }
+}
+```
+
+响应核心结构：
+
+```json
+{
+  "agent": "hsc-rag",
+  "strategy": "hsc_rag",
+  "doc_id": "demo_doc_001",
+  "chunk_count": 1,
+  "chunks": [
+    {
+      "chunk_id": "demo_doc_001_hsc_rag_chunk_00001",
+      "doc_id": "demo_doc_001",
+      "strategy": "hsc_rag",
+      "text": "[Introduction] This is a governed paragraph ready for chunk packaging.",
+      "source_blocks": ["demo_doc_001_p001"],
+      "source_anchor": {
+        "source_doc_id": "demo_doc_001",
+        "sections": ["Introduction"],
+        "first_block_id": "demo_doc_001_p001",
+        "last_block_id": "demo_doc_001_p001",
+        "block_count": 1
+      },
+      "quality_flags": ["short_chunk", "source_anchor_complete", "title_path_consistent", "section_boundary_respected", "hsc_structure_aware"]
+    }
+  ],
+  "report": {
+    "input_contract": "GovernedDocument",
+    "output_contract": "RagChunk[]",
+    "governance_stage": "post_normalization_packaging"
+  }
+}
+```
+
+批量接口：
+
+```text
+POST http://127.0.0.1:8000/api/v1/chunk/batch
+```
+
+批量接口输入字段为 `documents: GovernedDocument[]`，输出每篇文档的 chunk 序列和总 chunk 数，适合转换流水线一次提交多篇结构化全文。
 
 ## 启动前端页面
 
@@ -358,5 +458,4 @@ HSC-RAG 的攻关点在于：
 - 对 table / figure / code / formula / list 等 protected block 尽量保持完整。
 - 为每个 chunk 输出 `source_blocks`、`source_anchor`、`quality_flags`、`tags`、`summary` 等可解释字段。
 - 用公开数据集的 question/evidence 标注自动评估分段对 RAG 检索的影响。
-
 
