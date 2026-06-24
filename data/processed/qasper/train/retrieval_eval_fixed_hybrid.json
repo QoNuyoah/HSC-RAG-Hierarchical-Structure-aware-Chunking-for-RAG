@@ -1,8 +1,8 @@
 {
   "strategy": "fixed",
   "retriever": "hybrid",
-  "chunks_path": "E:\\practical_training\\HSC_RAG\\data\\processed\\qasper\\train\\chunks_fixed.jsonl",
-  "results_path": "E:\\practical_training\\HSC_RAG\\data\\processed\\qasper\\train\\retrieval_results_fixed_hybrid.jsonl",
+  "chunks_path": "data\\processed\\qasper\\train\\chunks_fixed.jsonl",
+  "results_path": "data\\processed\\qasper\\train\\retrieval_results_fixed_hybrid.jsonl",
   "chunks": 50,
   "queries_total_in_gold_file": 33,
   "queries_evaluated": 28,

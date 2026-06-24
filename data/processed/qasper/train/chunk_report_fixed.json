@@ -1,7 +1,7 @@
 {
   "strategy": "fixed",
-  "input_path": "E:\\practical_training\\HSC_RAG\\data\\processed\\qasper\\train\\governed_documents.jsonl",
-  "output_path": "E:\\practical_training\\HSC_RAG\\data\\processed\\qasper\\train\\chunks_fixed.jsonl",
+  "input_path": "data\\processed\\qasper\\train\\governed_documents.jsonl",
+  "output_path": "data\\processed\\qasper\\train\\chunks_fixed.jsonl",
   "documents": 5,
   "chunks": 50,
   "total_tokens": 22314,

@@ -1,7 +1,7 @@
 {
   "strategy": "recursive",
-  "input_path": "E:\\practical_training\\HSC_RAG\\data\\processed\\qasper\\train\\governed_documents.jsonl",
-  "output_path": "E:\\practical_training\\HSC_RAG\\data\\processed\\qasper\\train\\chunks_recursive.jsonl",
+  "input_path": "data\\processed\\qasper\\train\\governed_documents.jsonl",
+  "output_path": "data\\processed\\qasper\\train\\chunks_recursive.jsonl",
   "documents": 5,
   "chunks": 52,
   "total_tokens": 22983,

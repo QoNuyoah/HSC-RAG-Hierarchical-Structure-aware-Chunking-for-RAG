@@ -1,7 +1,7 @@
 {
   "strategy": "hsc_rag",
-  "input_path": "E:\\practical_training\\HSC_RAG\\data\\processed\\qasper\\train\\governed_documents.jsonl",
-  "output_path": "E:\\practical_training\\HSC_RAG\\data\\processed\\qasper\\train\\chunks_hsc_rag.jsonl",
+  "input_path": "data\\processed\\qasper\\train\\governed_documents.jsonl",
+  "output_path": "data\\processed\\qasper\\train\\chunks_hsc_rag.jsonl",
   "documents": 5,
   "chunks": 61,
   "total_tokens": 23598,

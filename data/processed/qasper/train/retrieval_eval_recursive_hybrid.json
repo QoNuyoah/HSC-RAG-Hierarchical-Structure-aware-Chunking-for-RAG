@@ -1,8 +1,8 @@
 {
   "strategy": "recursive",
   "retriever": "hybrid",
-  "chunks_path": "E:\\practical_training\\HSC_RAG\\data\\processed\\qasper\\train\\chunks_recursive.jsonl",
-  "results_path": "E:\\practical_training\\HSC_RAG\\data\\processed\\qasper\\train\\retrieval_results_recursive_hybrid.jsonl",
+  "chunks_path": "data\\processed\\qasper\\train\\chunks_recursive.jsonl",
+  "results_path": "data\\processed\\qasper\\train\\retrieval_results_recursive_hybrid.jsonl",
   "chunks": 52,
   "queries_total_in_gold_file": 33,
   "queries_evaluated": 28,

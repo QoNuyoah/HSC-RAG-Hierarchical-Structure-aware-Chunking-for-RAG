@@ -1,8 +1,8 @@
 {
   "strategy": "semantic",
   "retriever": "dense",
-  "chunks_path": "E:\\practical_training\\HSC_RAG\\data\\processed\\qasper\\train\\chunks_semantic.jsonl",
-  "results_path": "E:\\practical_training\\HSC_RAG\\data\\processed\\qasper\\train\\retrieval_results_semantic_dense.jsonl",
+  "chunks_path": "data\\processed\\qasper\\train\\chunks_semantic.jsonl",
+  "results_path": "data\\processed\\qasper\\train\\retrieval_results_semantic_dense.jsonl",
   "chunks": 101,
   "queries_total_in_gold_file": 33,
   "queries_evaluated": 28,
