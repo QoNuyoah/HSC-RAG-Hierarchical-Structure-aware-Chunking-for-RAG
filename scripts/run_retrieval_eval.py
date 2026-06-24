@@ -24,6 +24,13 @@ from app.retrievers.hybrid import HybridRetriever  # noqa: E402
 DEFAULT_DATA_DIR = PROJECT_ROOT / "data" / "processed" / "qasper" / "train"
 
 
+def display_path(path: Path) -> str:
+    try:
+        return str(path.resolve().relative_to(PROJECT_ROOT))
+    except ValueError:
+        return str(path)
+
+
 def read_jsonl(path: Path) -> list[dict[str, Any]]:
     records: list[dict[str, Any]] = []
     with path.open("r", encoding="utf-8") as f:
@@ -305,8 +312,8 @@ def evaluate_pair(
     metrics: dict[str, Any] = {
         "strategy": strategy,
         "retriever": retriever_name,
-        "chunks_path": str(chunks_path),
-        "results_path": str(result_path),
+        "chunks_path": display_path(chunks_path),
+        "results_path": display_path(result_path),
         "chunks": len(chunks),
         "queries_total_in_gold_file": len(records) + sum(skipped_counts.values()),
         "queries_evaluated": len(records),
@@ -435,8 +442,8 @@ def main() -> None:
             )
 
     summary = {
-        "gold_evidence_path": str(Path(args.gold_evidence)),
-        "output_dir": str(output_dir),
+        "gold_evidence_path": display_path(Path(args.gold_evidence)),
+        "output_dir": display_path(output_dir),
         "strategies": strategies,
         "retrievers": retriever_names,
         "reports": reports,
@@ -456,4 +463,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

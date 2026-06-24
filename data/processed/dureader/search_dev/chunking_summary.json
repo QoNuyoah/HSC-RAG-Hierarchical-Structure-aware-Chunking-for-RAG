@@ -1,0 +1,64 @@
+{
+  "reports": [
+    {
+      "strategy": "fixed",
+      "input_path": "data\\processed\\dureader\\search_dev\\governed_documents.jsonl",
+      "output_path": "data\\processed\\dureader\\search_dev\\chunks_fixed.jsonl",
+      "documents": 50,
+      "chunks": 322,
+      "total_tokens": 123529,
+      "avg_tokens": 383.63,
+      "min_tokens": 10,
+      "max_tokens": 512,
+      "quality_flag_counts": {
+        "fixed_window_baseline": 322,
+        "length_ok": 306,
+        "mixed_title_paths": 93,
+        "short_chunk": 16,
+        "source_anchor_complete": 322,
+        "split_long_block": 36,
+        "title_path_consistent": 229
+      },
+      "config": {
+        "target_tokens": 512,
+        "overlap_tokens": 64,
+        "min_tokens": 128,
+        "max_tokens": 512,
+        "include_title_context": false
+      },
+      "warnings": []
+    },
+    {
+      "strategy": "hsc_rag",
+      "input_path": "data\\processed\\dureader\\search_dev\\governed_documents.jsonl",
+      "output_path": "data\\processed\\dureader\\search_dev\\chunks_hsc_rag.jsonl",
+      "documents": 50,
+      "chunks": 293,
+      "total_tokens": 172041,
+      "avg_tokens": 587.17,
+      "min_tokens": 32,
+      "max_tokens": 900,
+      "quality_flag_counts": {
+        "final_flush": 50,
+        "hsc_structure_aware": 293,
+        "length_ok": 279,
+        "max_length_boundary": 106,
+        "mixed_title_paths": 42,
+        "section_boundary_respected": 126,
+        "short_chunk": 14,
+        "source_anchor_complete": 293,
+        "split_long_text_by_sentence": 8,
+        "title_path_consistent": 251
+      },
+      "config": {
+        "min_tokens": 180,
+        "target_tokens": 512,
+        "max_tokens": 900,
+        "include_title_context": true,
+        "merge_short_chunks": true,
+        "protect_blocks": true
+      },
+      "warnings": []
+    }
+  ]
+}

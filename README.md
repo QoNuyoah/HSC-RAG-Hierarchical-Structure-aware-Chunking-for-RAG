@@ -84,6 +84,7 @@ HSC_RAG
 ├── reports
 └── scripts
     ├── convert_qasper.py
+    ├── convert_dureader.py
     ├── run_chunking.py
     ├── run_retrieval_eval.py
     ├── validate_chunks.py
@@ -140,6 +141,12 @@ lucide-react
 data\processed\qasper\train
 ```
 
+另外，本项目补充跑通了中文公开数据集 DuReader，用于验证 HSC-RAG 在中文网页问答场景下的跨数据集适配能力。DuReader 原始压缩包较大，未纳入 Git 版本管理；本仓库保留 50 条 `search.dev` 样本的标准化处理产物：
+
+```text
+data\processed\dureader\search_dev
+```
+
 ## 数据转换
 
 在项目根目录执行：
@@ -181,6 +188,23 @@ unanswerable_queries: 5
 evidence_items: 94
 matched_evidence_items: 93
 evidence_match_rate: 0.9894
+```
+
+DuReader 转换示例：
+
+```powershell
+& E:\anaconda3\envs\HSC_RAG\python.exe scripts\convert_dureader.py --zip DuReader.zip --source search --split dev --limit-docs 50 --output-dir data\processed\dureader\search_dev
+```
+
+当前 DuReader 转换结果：
+
+```text
+documents: 50
+blocks: 1870
+queries: 50
+answerable_queries: 49
+gold_evidence_items: 91
+evidence_match_rate: 1.0
 ```
 
 ## 运行分段实验
@@ -274,6 +298,46 @@ retrieval_results_hsc_rag_hybrid.jsonl
 
 ```text
 reports\retrieval_eval_summary.md
+```
+
+## DuReader 补充实验
+
+DuReader 补充实验验证了中文公开数据集上的完整链路：
+
+```text
+DuReader search.dev -> GovernedDocument
+-> fixed / hsc_rag
+-> BM25 / Dense FAISS / Hybrid
+-> Recall@1/3/5、MRR、nDCG@5
+```
+
+运行分段：
+
+```powershell
+& E:\anaconda3\envs\HSC_RAG\python.exe scripts\run_chunking.py --input data\processed\dureader\search_dev\governed_documents.jsonl --output-dir data\processed\dureader\search_dev --strategies fixed,hsc_rag --fixed-target 512 --fixed-overlap 64 --hsc-min 180 --hsc-target 512 --hsc-max 900
+```
+
+运行检索评估：
+
+```powershell
+& E:\anaconda3\envs\HSC_RAG\python.exe scripts\run_retrieval_eval.py --chunk-dir data\processed\dureader\search_dev --gold-evidence data\processed\dureader\search_dev\gold_evidence.jsonl --strategies fixed,hsc_rag --retrievers bm25,dense,hybrid --top-k 1,3,5 --ndcg-k 5 --dense-encoder tfidf_svd --dense-svd-dim 128 --hybrid-alpha 0.55
+```
+
+DuReader 主要结果：
+
+| Strategy | Retriever | Recall@1 | Recall@3 | Recall@5 | MRR | nDCG@5 |
+|---|---|---:|---:|---:|---:|---:|
+| fixed | BM25 | 0.370748 | 0.738095 | 0.846939 | 0.662439 | 0.683983 |
+| hsc_rag | BM25 | 0.241497 | 0.642857 | 0.870748 | 0.583528 | 0.642804 |
+| fixed | Dense | 0.425170 | 0.642857 | 0.836735 | 0.671097 | 0.684329 |
+| hsc_rag | Dense | 0.275510 | 0.632653 | 0.870748 | 0.613800 | 0.655386 |
+| fixed | Hybrid | 0.465986 | 0.700680 | 0.826531 | 0.705782 | 0.711163 |
+| hsc_rag | Hybrid | 0.272109 | 0.653061 | 0.853741 | 0.600761 | 0.646463 |
+
+DuReader 的结论和 QASPER 不完全相同：fixed 在 Recall@1/MRR 上更强，因为 DuReader 的 gold evidence 是段落级标注，较细的 chunk 更容易首位命中；HSC-RAG 在结构质量和 Recall@5 上更好，例如 BM25 Recall@5 从 0.846939 提升到 0.870748，并将 `mixed_title_paths` 从 93 降到 42。完整说明见：
+
+```text
+reports\dureader_eval_summary.md
 ```
 
 ## 启动后端 API
@@ -458,4 +522,3 @@ HSC-RAG 的攻关点在于：
 - 对 table / figure / code / formula / list 等 protected block 尽量保持完整。
 - 为每个 chunk 输出 `source_blocks`、`source_anchor`、`quality_flags`、`tags`、`summary` 等可解释字段。
 - 用公开数据集的 question/evidence 标注自动评估分段对 RAG 检索的影响。
-

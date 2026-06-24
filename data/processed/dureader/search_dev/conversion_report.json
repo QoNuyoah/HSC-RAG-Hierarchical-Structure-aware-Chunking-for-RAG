@@ -1,0 +1,24 @@
+{
+  "dataset": "dureader_search",
+  "source": "search",
+  "split": "dev",
+  "documents": 50,
+  "blocks": 1870,
+  "queries": 50,
+  "answerable_queries": 49,
+  "unanswerable_queries": 1,
+  "evidence_items": 91,
+  "matched_evidence_items": 91,
+  "evidence_match_rate": 1.0,
+  "selected_documents": 91,
+  "warnings": [],
+  "zip_path": "DuReader.zip",
+  "output_dir": "data\\processed\\dureader\\search_dev",
+  "limit_docs": 50,
+  "artifacts": {
+    "governed_documents": "governed_documents.jsonl",
+    "blocks": "blocks.jsonl",
+    "queries": "queries.csv",
+    "gold_evidence": "gold_evidence.jsonl"
+  }
+}

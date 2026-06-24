@@ -12,6 +12,8 @@ from sklearn.decomposition import TruncatedSVD
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.preprocessing import normalize
 
+from app.retrievers.bm25 import tokenize
+
 
 @dataclass(frozen=True)
 class DenseHit:
@@ -147,10 +149,9 @@ class DenseFaissRetriever:
 
     def _encode_corpus_tfidf_svd(self) -> np.ndarray:
         self._vectorizer = TfidfVectorizer(
-            lowercase=True,
-            stop_words="english",
+            analyzer=tokenize,
+            lowercase=False,
             max_features=8000,
-            token_pattern=r"(?u)\b[A-Za-z][A-Za-z0-9_\-']+\b",
         )
         matrix = self._vectorizer.fit_transform(self._texts)
         if matrix.shape[0] <= 2 or matrix.shape[1] <= 2:
@@ -213,4 +214,3 @@ class DenseFaissRetriever:
             quality_flags=list(chunk.get("quality_flags") or []),
             preview=text[:240],
         )
-

@@ -1,0 +1,41 @@
+{
+  "strategy": "fixed",
+  "retriever": "bm25",
+  "chunks_path": "data\\processed\\dureader\\search_dev\\chunks_fixed.jsonl",
+  "results_path": "data\\processed\\dureader\\search_dev\\retrieval_results_fixed_bm25.jsonl",
+  "chunks": 322,
+  "queries_total_in_gold_file": 50,
+  "queries_evaluated": 49,
+  "queries_skipped": {
+    "unanswerable": 1,
+    "no_gold_blocks": 0
+  },
+  "search_scope": "same_doc",
+  "index_fields": [
+    "text"
+  ],
+  "retriever_config": {
+    "retriever": "bm25"
+  },
+  "metric_definitions": {
+    "recall@k": "Mean block-level evidence recall: covered gold_block_ids in top-k chunks divided by all gold_block_ids.",
+    "hit_rate@k": "Mean query-level hit rate: at least one gold evidence block appears in top-k chunks.",
+    "full_recall_rate@k": "Mean query-level complete evidence coverage: all gold evidence blocks appear in top-k chunks.",
+    "mrr": "Mean reciprocal rank of the first chunk containing any gold evidence block.",
+    "ndcg@5": "Binary chunk-relevance nDCG: a chunk is relevant if it contains at least one gold evidence block."
+  },
+  "metrics": {
+    "recall@1": 0.370748,
+    "hit_rate@1": 0.469388,
+    "full_recall_rate@1": 0.306122,
+    "recall@3": 0.738095,
+    "hit_rate@3": 0.857143,
+    "full_recall_rate@3": 0.612245,
+    "recall@5": 0.846939,
+    "hit_rate@5": 0.918367,
+    "full_recall_rate@5": 0.755102,
+    "mrr": 0.662439,
+    "ndcg@5": 0.683983,
+    "avg_gold_blocks_per_query": 1.836735
+  }
+}

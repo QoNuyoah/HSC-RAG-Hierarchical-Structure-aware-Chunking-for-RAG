@@ -16,6 +16,9 @@ from app.core.schemas import ChunkSourceAnchor, GovernedBlock, GovernedDocument,
 WHITESPACE_RE = re.compile(r"\s+")
 SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?。！？])\s+")
 CJK_RE = re.compile(r"[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]")
+MIXED_TOKEN_RE = re.compile(
+    r"[A-Za-z0-9_]+(?:[-'][A-Za-z0-9_]+)?|[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]|[^\s]"
+)
 ENTITY_RE = re.compile(
     r"\b(?:[A-Z]{2,}[A-Za-z0-9+\-]*|[A-Z][A-Za-z0-9+\-]{2,}(?:\s+[A-Z][A-Za-z0-9+\-]{2,}){0,3})\b"
 )
@@ -81,21 +84,35 @@ def estimate_tokens(text: str) -> int:
 
 
 def word_chunks(text: str, max_tokens: int, overlap_tokens: int = 0) -> list[str]:
-    words = normalize_text(text).split()
+    text = normalize_text(text)
+    words = text.split()
     if not words:
         return []
-    if len(words) <= max_tokens:
+    estimated_tokens = estimate_tokens(text)
+    if len(words) <= max_tokens and estimated_tokens <= max_tokens:
         return [" ".join(words)]
+    if estimated_tokens > max_tokens and CJK_RE.search(text):
+        words = MIXED_TOKEN_RE.findall(normalize_text(text))
+    if len(words) <= max_tokens:
+        return [_join_mixed_tokens(words)]
     chunks: list[str] = []
     start = 0
     step = max(1, max_tokens - max(0, overlap_tokens))
     while start < len(words):
         end = min(start + max_tokens, len(words))
-        chunks.append(" ".join(words[start:end]))
+        chunks.append(_join_mixed_tokens(words[start:end]))
         if end >= len(words):
             break
         start += step
     return chunks
+
+
+def _join_mixed_tokens(tokens: list[str]) -> str:
+    if not tokens:
+        return ""
+    if not any(CJK_RE.search(token) for token in tokens):
+        return " ".join(tokens)
+    return "".join(tokens)
 
 
 def sentence_chunks(text: str, max_tokens: int) -> list[str]:

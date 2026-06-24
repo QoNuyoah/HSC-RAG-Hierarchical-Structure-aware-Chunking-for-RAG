@@ -23,6 +23,13 @@ from app.chunkers.semantic import SemanticChunkConfig, SemanticChunker  # noqa: 
 from app.core.schemas import ChunkRunReport, RagChunk  # noqa: E402
 
 
+def display_path(path: Path) -> str:
+    try:
+        return str(path.resolve().relative_to(PROJECT_ROOT))
+    except ValueError:
+        return str(path)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -70,8 +77,8 @@ def report_for(
     total_tokens = sum(token_counts)
     return ChunkRunReport(
         strategy=strategy,  # type: ignore[arg-type]
-        input_path=str(input_path),
-        output_path=str(output_path),
+        input_path=display_path(input_path),
+        output_path=display_path(output_path),
         documents=documents,
         chunks=len(chunks),
         total_tokens=total_tokens,
@@ -164,4 +171,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
