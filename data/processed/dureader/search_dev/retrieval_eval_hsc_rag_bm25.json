@@ -3,7 +3,7 @@
   "retriever": "bm25",
   "chunks_path": "data\\processed\\dureader\\search_dev\\chunks_hsc_rag.jsonl",
   "results_path": "data\\processed\\dureader\\search_dev\\retrieval_results_hsc_rag_bm25.jsonl",
-  "chunks": 293,
+  "chunks": 292,
   "queries_total_in_gold_file": 50,
   "queries_evaluated": 49,
   "queries_skipped": {

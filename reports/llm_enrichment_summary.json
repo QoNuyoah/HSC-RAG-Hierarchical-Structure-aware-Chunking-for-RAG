@@ -1,0 +1,31 @@
+{
+  "task": "HSC-RAG LLM semantic organization",
+  "input": "data\\processed\\qasper\\train\\chunks_hsc_rag.jsonl",
+  "output": "data\\processed\\qasper\\train\\chunks_hsc_rag_llm_enriched.jsonl",
+  "qa_output": null,
+  "report_json": "reports\\llm_enrichment_summary.json",
+  "provider": "openai_compatible",
+  "model": "Qwen/Qwen3-VL-32B-Instruct",
+  "limit": 20,
+  "chunks": 20,
+  "qa_pairs": 0,
+  "prompt_version": "hsc-rag-enrich-v1",
+  "score_average": {
+    "semantic_integrity_score": 4.795,
+    "summary_faithfulness_score": 5.0,
+    "tag_accuracy_score": 4.99
+  },
+  "faithfulness_risk_counts": {
+    "low": 20
+  },
+  "provider_execution_counts": {
+    "remote_llm_call": 20
+  },
+  "sample_chunk_ids": [
+    "qasper_train_1909.00694_hsc_rag_chunk_00001",
+    "qasper_train_1909.00694_hsc_rag_chunk_00002",
+    "qasper_train_1909.00694_hsc_rag_chunk_00003",
+    "qasper_train_1909.00694_hsc_rag_chunk_00004",
+    "qasper_train_1909.00694_hsc_rag_chunk_00005"
+  ]
+}

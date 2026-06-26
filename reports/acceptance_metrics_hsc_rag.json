@@ -63,7 +63,7 @@
     "table": 22
   },
   "manual_evaluation": {
-    "path": "E:\\practical_training\\HSC_RAG\\reports\\manual_eval_hsc_rag.csv",
+    "path": "reports\\manual_eval_hsc_rag.csv",
     "rows": 20,
     "completed_rows": 20,
     "semantic_integrity": {

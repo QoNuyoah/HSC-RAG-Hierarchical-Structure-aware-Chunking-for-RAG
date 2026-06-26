@@ -37,17 +37,17 @@
     "ndcg@5": "Binary chunk-relevance nDCG: a chunk is relevant if it contains at least one gold evidence block."
   },
   "metrics": {
-    "recall@1": 0.217262,
+    "recall@1": 0.235119,
     "hit_rate@1": 0.357143,
-    "full_recall_rate@1": 0.107143,
+    "full_recall_rate@1": 0.142857,
     "recall@3": 0.491071,
     "hit_rate@3": 0.571429,
     "full_recall_rate@3": 0.392857,
-    "recall@5": 0.633929,
-    "hit_rate@5": 0.678571,
-    "full_recall_rate@5": 0.571429,
-    "mrr": 0.525497,
-    "ndcg@5": 0.481484,
+    "recall@5": 0.6875,
+    "hit_rate@5": 0.75,
+    "full_recall_rate@5": 0.607143,
+    "mrr": 0.524334,
+    "ndcg@5": 0.507306,
     "avg_gold_blocks_per_query": 1.678571
   }
 }

@@ -22,6 +22,7 @@ frontend/.vite/
 .env
 .env.*
 !.env.example
+runs/
 .idea/
 .vscode/
 *.log

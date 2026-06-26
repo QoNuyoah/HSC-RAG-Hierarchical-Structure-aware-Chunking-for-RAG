@@ -3,7 +3,7 @@
   "retriever": "hybrid",
   "chunks_path": "data\\processed\\dureader\\search_dev\\chunks_hsc_rag.jsonl",
   "results_path": "data\\processed\\dureader\\search_dev\\retrieval_results_hsc_rag_hybrid.jsonl",
-  "chunks": 293,
+  "chunks": 292,
   "queries_total_in_gold_file": 50,
   "queries_evaluated": 49,
   "queries_skipped": {
@@ -47,7 +47,7 @@
     "hit_rate@5": 0.918367,
     "full_recall_rate@5": 0.77551,
     "mrr": 0.600761,
-    "ndcg@5": 0.646463,
+    "ndcg@5": 0.645209,
     "avg_gold_blocks_per_query": 1.836735
   }
 }

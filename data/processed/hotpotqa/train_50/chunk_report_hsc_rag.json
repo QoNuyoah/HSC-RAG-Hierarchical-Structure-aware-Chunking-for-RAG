@@ -1,0 +1,30 @@
+{
+  "strategy": "hsc_rag",
+  "input_path": "data\\processed\\hotpotqa\\train_50\\governed_documents.jsonl",
+  "output_path": "data\\processed\\hotpotqa\\train_50\\chunks_hsc_rag.jsonl",
+  "documents": 50,
+  "chunks": 217,
+  "total_tokens": 50563,
+  "avg_tokens": 233.01,
+  "min_tokens": 40,
+  "max_tokens": 539,
+  "quality_flag_counts": {
+    "final_flush": 50,
+    "hsc_structure_aware": 217,
+    "length_ok": 188,
+    "mixed_title_paths": 177,
+    "section_boundary_respected": 167,
+    "short_chunk": 29,
+    "source_anchor_complete": 217,
+    "title_path_consistent": 40
+  },
+  "config": {
+    "min_tokens": 180,
+    "target_tokens": 512,
+    "max_tokens": 900,
+    "include_title_context": true,
+    "merge_short_chunks": true,
+    "protect_blocks": true
+  },
+  "warnings": []
+}

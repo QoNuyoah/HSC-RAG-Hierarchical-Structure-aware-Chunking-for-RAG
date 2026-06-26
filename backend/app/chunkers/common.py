@@ -14,7 +14,7 @@ from app.core.schemas import ChunkSourceAnchor, GovernedBlock, GovernedDocument,
 
 
 WHITESPACE_RE = re.compile(r"\s+")
-SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?。！？])\s+")
+SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+|(?<=[。！？])\s*")
 CJK_RE = re.compile(r"[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]")
 MIXED_TOKEN_RE = re.compile(
     r"[A-Za-z0-9_]+(?:[-'][A-Za-z0-9_]+)?|[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]|[^\s]"
@@ -45,6 +45,36 @@ STOPWORDS = {
     "method",
     "results",
     "approach",
+}
+CJK_TAG_STOPWORDS = {
+    "一个",
+    "一种",
+    "一些",
+    "以及",
+    "可以",
+    "我们",
+    "他们",
+    "这个",
+    "这些",
+    "进行",
+    "没有",
+    "不是",
+    "就是",
+    "因为",
+    "所以",
+    "如果",
+    "的",
+    "了",
+    "和",
+    "是",
+    "在",
+    "与",
+    "及",
+    "或",
+    "等",
+    "年",
+    "月",
+    "日",
 }
 ENTITY_STOPWORDS = {
     "Abstract",
@@ -130,21 +160,29 @@ def sentence_chunks(text: str, max_tokens: int) -> list[str]:
         sentence_tokens = estimate_tokens(sentence)
         if sentence_tokens > max_tokens:
             if buffer:
-                chunks.append(" ".join(buffer))
+                chunks.append(join_sentences(buffer))
                 buffer = []
                 buffer_tokens = 0
             chunks.extend(word_chunks(sentence, max_tokens=max_tokens, overlap_tokens=0))
             continue
         if buffer and buffer_tokens + sentence_tokens > max_tokens:
-            chunks.append(" ".join(buffer))
+            chunks.append(join_sentences(buffer))
             buffer = [sentence]
             buffer_tokens = sentence_tokens
         else:
             buffer.append(sentence)
             buffer_tokens += sentence_tokens
     if buffer:
-        chunks.append(" ".join(buffer))
+        chunks.append(join_sentences(buffer))
     return chunks
+
+
+def join_sentences(sentences: list[str]) -> str:
+    if not sentences:
+        return ""
+    if any(CJK_RE.search(sentence) for sentence in sentences):
+        return "".join(sentences)
+    return " ".join(sentences)
 
 
 def content_blocks(doc: GovernedDocument) -> list[GovernedBlock]:
@@ -234,6 +272,14 @@ def derive_tags(blocks: list[GovernedBlock], limit: int = 8) -> list[str]:
         if tag not in tags:
             tags.append(tag)
 
+    for block in blocks:
+        for entity_tag in block.entity_tags:
+            tag = normalize_tag(entity_tag)
+            if tag and tag not in tags:
+                tags.append(tag)
+            if len(tags) >= limit:
+                return tags[:limit]
+
     counter: Counter[str] = Counter()
     for block in blocks:
         for word in re.findall(r"[A-Za-z][A-Za-z0-9_-]{3,}", block.text.lower()):
@@ -245,6 +291,20 @@ def derive_tags(blocks: list[GovernedBlock], limit: int = 8) -> list[str]:
         if len(tags) >= limit:
             break
     return tags[:limit]
+
+
+def normalize_tag(value: Any) -> str:
+    tag = normalize_text(value).strip(" \t\r\n,，.;；:：!?！？()[]{}<>《》【】\"'“”‘’")
+    if not tag:
+        return ""
+    lowered = tag.lower()
+    if lowered in STOPWORDS or tag in CJK_TAG_STOPWORDS:
+        return ""
+    if len(tag) == 1 and CJK_RE.fullmatch(tag):
+        return ""
+    if re.fullmatch(r"[\W_]+", tag, flags=re.UNICODE):
+        return ""
+    return lowered if not CJK_RE.search(tag) else tag
 
 
 def derive_entity_tags(blocks: list[GovernedBlock]) -> list[str]:

@@ -1,0 +1,27 @@
+{
+  "strategy": "fixed",
+  "input_path": "data\\processed\\hotpotqa\\train_50\\governed_documents.jsonl",
+  "output_path": "data\\processed\\hotpotqa\\train_50\\chunks_fixed.jsonl",
+  "documents": 50,
+  "chunks": 115,
+  "total_tokens": 45356,
+  "avg_tokens": 394.4,
+  "min_tokens": 17,
+  "max_tokens": 512,
+  "quality_flag_counts": {
+    "fixed_window_baseline": 115,
+    "length_ok": 104,
+    "mixed_title_paths": 108,
+    "short_chunk": 11,
+    "source_anchor_complete": 115,
+    "title_path_consistent": 7
+  },
+  "config": {
+    "target_tokens": 512,
+    "overlap_tokens": 64,
+    "min_tokens": 128,
+    "max_tokens": 512,
+    "include_title_context": false
+  },
+  "warnings": []
+}

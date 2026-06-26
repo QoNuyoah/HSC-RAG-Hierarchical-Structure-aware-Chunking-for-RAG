@@ -22,4 +22,4 @@
 
 - “不破句率”采用工程可验证口径：HSC-RAG 以 `GovernedBlock` 为最小治理内容单元进行封装；当前样本中每个内容块仅出现在一个 HSC-RAG chunk 中，说明没有发生跨 chunk 的句中/块内截断。
 - “期望输出字段完整”检查每个 chunk 是否包含 `text/token_count/tags/summary/entity_tags/source_blocks/source_anchor/quality_flags` 等下游消费必需字段。
-- “语义完整”和“打标与摘要”读取 `E:\practical_training\HSC_RAG\reports\manual_eval_hsc_rag.csv`。建议抽样 20 个 chunks；均分 >= 4.0 且最低分 >= 3.0 记为达标。
+- “语义完整”和“打标与摘要”读取 `reports\manual_eval_hsc_rag.csv`。建议抽样 20 个 chunks；均分 >= 4.0 且最低分 >= 3.0 记为达标。

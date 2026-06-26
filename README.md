@@ -85,7 +85,10 @@ HSC_RAG
 └── scripts
     ├── convert_qasper.py
     ├── convert_dureader.py
+    ├── convert_hotpotqa.py
+    ├── run_agent_pipeline.py
     ├── run_chunking.py
+    ├── run_llm_enrichment.py
     ├── run_retrieval_eval.py
     ├── validate_chunks.py
     └── validate_governed_outputs.py
@@ -147,6 +150,13 @@ data\processed\qasper\train
 data\processed\dureader\search_dev
 ```
 
+此外，本项目补充适配了 HotpotQA 作为进阶多跳问答实验。HotpotQA 的 `supporting_facts` 可直接映射为 `gold_block_ids`，适合观察跨候选文章证据组织、Top-5 证据覆盖和 bad case 边界。它不替代 QASPER 主实验，因为 fixed chunk 在 HotpotQA same-doc 评估中容易通过跨文章混合获得较高排序指标。
+
+```text
+data\processed\hotpotqa\train_50
+reports\hotpotqa_eval_summary.md
+```
+
 ## 数据转换
 
 在项目根目录执行：
@@ -204,6 +214,23 @@ blocks: 1870
 queries: 50
 answerable_queries: 49
 gold_evidence_items: 91
+evidence_match_rate: 1.0
+```
+
+HotpotQA 转换示例：
+
+```powershell
+& E:\anaconda3\envs\HSC_RAG\python.exe scripts\convert_hotpotqa.py --zip HotpotQA.zip --split train --limit-docs 50 --output-dir data\processed\hotpotqa\train_50
+```
+
+当前 HotpotQA 转换结果：
+
+```text
+documents: 50
+blocks: 2066
+queries: 50
+answerable_queries: 50
+gold_evidence_items: 130
 evidence_match_rate: 1.0
 ```
 
@@ -522,3 +549,156 @@ HSC-RAG 的攻关点在于：
 - 对 table / figure / code / formula / list 等 protected block 尽量保持完整。
 - 为每个 chunk 输出 `source_blocks`、`source_anchor`、`quality_flags`、`tags`、`summary` 等可解释字段。
 - 用公开数据集的 question/evidence 标注自动评估分段对 RAG 检索的影响。
+
+## 大模型相关技术使用说明
+
+为满足课程“所有备选课题均需使用大模型相关技术”“围绕智能体 Agent 相关研究展开”的要求，本项目将 HSC-RAG 明确实现为“确定性结构感知分段 + 大模型语义组织”的混合式智能体。
+
+核心分段边界不直接交给大模型决定，原因是课题任务书要求数据治理过程可追溯、可回放，并强调“能用确定性规则解决就不消耗大模型算力”。因此，HSC-RAG 使用确定性结构规则负责：
+
+- 标题层级边界识别。
+- 不破句和长度约束。
+- table / figure / code / formula / list 等结构块保护。
+- chunk 到原文 `source_blocks` 与 `source_anchor` 的完整回链。
+
+大模型相关能力放在分段之后，作为 `LLM Semantic Organization Skill`：
+
+- 对每个 chunk 生成忠实摘要。
+- 生成主题标签与关键词。
+- 抽取或补充实体标签。
+- 评价 chunk 语义完整性。
+- 评价摘要忠实度与标签准确性。
+- 可选生成面向微调或评测的 QA/指令数据样例。
+
+该模块默认支持离线可复现的 `mock` provider，便于无 API key、无外网或私有化部署场景下演示完整流程；后续可切换为 `openai_compatible` provider，接入 DeepSeek、通义千问、OpenAI、Ollama/vLLM 等兼容 OpenAI Chat Completions 协议的服务。
+
+离线增强示例：
+
+```powershell
+& E:\anaconda3\envs\HSC_RAG\python.exe scripts\run_llm_enrichment.py `
+  --input data\processed\qasper\train\chunks_hsc_rag.jsonl `
+  --output data\processed\qasper\train\chunks_hsc_rag_llm_enriched.jsonl `
+  --provider mock `
+  --limit 20 `
+  --include-qa
+```
+
+输出文件：
+
+```text
+data\processed\qasper\train\chunks_hsc_rag_llm_enriched.jsonl
+data\processed\qasper\train\hsc_rag_synthetic_qa.jsonl
+reports\llm_enrichment_summary.md
+reports\llm_enrichment_summary.json
+```
+
+真实大模型兼容接口示例：
+
+```powershell
+$env:DEEPSEEK_API_KEY="你的 API Key"
+& E:\anaconda3\envs\HSC_RAG\python.exe scripts\run_llm_enrichment.py `
+  --input data\processed\qasper\train\chunks_hsc_rag.jsonl `
+  --output data\processed\qasper\train\chunks_hsc_rag_llm_enriched.jsonl `
+  --provider openai_compatible `
+  --base-url https://api.deepseek.com/v1 `
+  --model deepseek-chat `
+  --api-key-env DEEPSEEK_API_KEY `
+  --limit 20 `
+  --include-qa
+```
+
+增强结果写入每个 chunk 的 `metadata.llm_enrichment` 字段，不改变原有 `RagChunk` 主结构，因此不会影响已完成的固定切分对比实验、BM25/Dense/Hybrid 检索评估和前端展示。
+
+## 统一智能体流水线入口
+
+为了便于演示和被上游流水线调用，项目提供统一入口：
+
+```text
+scripts\run_agent_pipeline.py
+```
+
+该脚本将原先分散的步骤串成一条 Agent Pipeline：
+
+```text
+结构化输入/Markdown
+-> GovernedDocument
+-> fixed / recursive / semantic / hsc_rag 分段
+-> 可选 BM25 / Dense / Hybrid 检索评估
+-> 可选 LLM 语义组织增强
+-> agent_pipeline_summary.json / agent_pipeline_summary.md
+```
+
+对标准 `GovernedDocument` JSONL 运行完整分段与检索评估：
+
+```powershell
+& E:\anaconda3\envs\HSC_RAG\python.exe scripts\run_agent_pipeline.py `
+  --input data\processed\qasper\train\governed_documents.jsonl `
+  --input-format governed_jsonl `
+  --output-dir runs\qasper_agent_demo `
+  --strategies fixed,recursive,semantic,hsc_rag `
+  --run-eval `
+  --gold-evidence data\processed\qasper\train\gold_evidence.jsonl `
+  --retrievers bm25,dense,hybrid `
+  --top-k 1,3,5 `
+  --ndcg-k 5
+```
+
+如果只想演示“输入结构化全文，输出 chunk 序列”，可以不传 `--run-eval`：
+
+```powershell
+& E:\anaconda3\envs\HSC_RAG\python.exe scripts\run_agent_pipeline.py `
+  --input data\processed\qasper\train\governed_documents.jsonl `
+  --input-format governed_jsonl `
+  --output-dir runs\chunk_only_demo `
+  --strategies hsc_rag
+```
+
+对 Markdown 运行分段演示：
+
+```powershell
+& E:\anaconda3\envs\HSC_RAG\python.exe scripts\run_agent_pipeline.py `
+  --input docs\demo.md `
+  --input-format markdown `
+  --output-dir runs\markdown_agent_demo `
+  --strategies hsc_rag
+```
+
+注意：Markdown 输入可以生成分段、标签、摘要、实体标签和原文回链；但严格的 Recall@k / MRR / nDCG@5 需要额外提供 `gold_evidence.jsonl`，因为检索评估必须知道每个 query 的标准证据块。
+
+带大模型语义组织增强的运行示例：
+
+```powershell
+$env:SILICONFLOW_API_KEY="你的硅基流动 API Key"
+
+& E:\anaconda3\envs\HSC_RAG\python.exe scripts\run_agent_pipeline.py `
+  --input data\processed\qasper\train\governed_documents.jsonl `
+  --input-format governed_jsonl `
+  --output-dir runs\qasper_agent_llm_demo `
+  --strategies fixed,hsc_rag `
+  --run-eval `
+  --gold-evidence data\processed\qasper\train\gold_evidence.jsonl `
+  --run-llm-enrichment `
+  --llm-provider openai_compatible `
+  --llm-base-url https://api.siliconflow.cn/v1 `
+  --llm-model Qwen/Qwen3-VL-32B-Instruct `
+  --llm-api-key-env SILICONFLOW_API_KEY `
+  --llm-limit 20 `
+  --llm-timeout-seconds 240 `
+  --llm-max-input-chars 1200 `
+  --llm-max-output-tokens 900 `
+  --llm-disable-response-format
+```
+
+统一入口的主要输出：
+
+```text
+governed_documents.jsonl
+chunks_hsc_rag.jsonl
+chunk_report_hsc_rag.json
+chunking_summary.json
+retrieval_eval_multi_summary.json
+chunks_hsc_rag_llm_enriched.jsonl
+llm_enrichment_summary.json
+agent_pipeline_summary.json
+agent_pipeline_summary.md
+```

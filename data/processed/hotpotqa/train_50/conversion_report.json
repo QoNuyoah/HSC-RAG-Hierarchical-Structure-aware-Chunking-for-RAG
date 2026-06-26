@@ -1,0 +1,23 @@
+{
+  "dataset": "hotpotqa",
+  "split": "train",
+  "documents": 50,
+  "blocks": 2066,
+  "queries": 50,
+  "answerable_queries": 50,
+  "evidence_items": 130,
+  "matched_evidence_items": 130,
+  "evidence_match_rate": 1.0,
+  "context_articles": 500,
+  "warnings": [],
+  "zip_path": "HotpotQA.zip",
+  "member": "hotpot_train_v1.1.json",
+  "output_dir": "data\\processed\\hotpotqa\\train_50",
+  "limit_docs": 50,
+  "artifacts": {
+    "governed_documents": "governed_documents.jsonl",
+    "blocks": "blocks.jsonl",
+    "queries": "queries.csv",
+    "gold_evidence": "gold_evidence.jsonl"
+  }
+}

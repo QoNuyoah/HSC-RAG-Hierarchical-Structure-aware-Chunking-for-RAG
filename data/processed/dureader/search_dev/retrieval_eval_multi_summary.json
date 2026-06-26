@@ -160,7 +160,7 @@
       "retriever": "bm25",
       "chunks_path": "data\\processed\\dureader\\search_dev\\chunks_hsc_rag.jsonl",
       "results_path": "data\\processed\\dureader\\search_dev\\retrieval_results_hsc_rag_bm25.jsonl",
-      "chunks": 293,
+      "chunks": 292,
       "queries_total_in_gold_file": 50,
       "queries_evaluated": 49,
       "queries_skipped": {
@@ -201,7 +201,7 @@
       "retriever": "dense",
       "chunks_path": "data\\processed\\dureader\\search_dev\\chunks_hsc_rag.jsonl",
       "results_path": "data\\processed\\dureader\\search_dev\\retrieval_results_hsc_rag_dense.jsonl",
-      "chunks": 293,
+      "chunks": 292,
       "queries_total_in_gold_file": 50,
       "queries_evaluated": 49,
       "queries_skipped": {
@@ -235,14 +235,14 @@
         "recall@1": 0.27551,
         "hit_rate@1": 0.408163,
         "full_recall_rate@1": 0.163265,
-        "recall@3": 0.632653,
+        "recall@3": 0.62585,
         "hit_rate@3": 0.77551,
-        "full_recall_rate@3": 0.489796,
-        "recall@5": 0.870748,
+        "full_recall_rate@3": 0.469388,
+        "recall@5": 0.860544,
         "hit_rate@5": 0.938776,
-        "full_recall_rate@5": 0.795918,
-        "mrr": 0.6138,
-        "ndcg@5": 0.655386,
+        "full_recall_rate@5": 0.77551,
+        "mrr": 0.614164,
+        "ndcg@5": 0.65043,
         "avg_gold_blocks_per_query": 1.836735
       }
     },
@@ -251,7 +251,7 @@
       "retriever": "hybrid",
       "chunks_path": "data\\processed\\dureader\\search_dev\\chunks_hsc_rag.jsonl",
       "results_path": "data\\processed\\dureader\\search_dev\\retrieval_results_hsc_rag_hybrid.jsonl",
-      "chunks": 293,
+      "chunks": 292,
       "queries_total_in_gold_file": 50,
       "queries_evaluated": 49,
       "queries_skipped": {
@@ -295,7 +295,7 @@
         "hit_rate@5": 0.918367,
         "full_recall_rate@5": 0.77551,
         "mrr": 0.600761,
-        "ndcg@5": 0.646463,
+        "ndcg@5": 0.645209,
         "avg_gold_blocks_per_query": 1.836735
       }
     }
@@ -328,14 +328,14 @@
         "recall@1": -0.14966,
         "hit_rate@1": -0.102041,
         "full_recall_rate@1": -0.204082,
-        "recall@3": -0.010204,
+        "recall@3": -0.017007,
         "hit_rate@3": 0.020408,
-        "full_recall_rate@3": -0.040816,
-        "recall@5": 0.034013,
+        "full_recall_rate@3": -0.061224,
+        "recall@5": 0.023809,
         "hit_rate@5": 0.0,
-        "full_recall_rate@5": 0.081632,
-        "mrr": -0.057297,
-        "ndcg@5": -0.028943,
+        "full_recall_rate@5": 0.061224,
+        "mrr": -0.056933,
+        "ndcg@5": -0.033899,
         "avg_gold_blocks_per_query": 0.0
       }
     },
@@ -354,7 +354,7 @@
         "hit_rate@5": 0.0,
         "full_recall_rate@5": 0.061224,
         "mrr": -0.105021,
-        "ndcg@5": -0.0647,
+        "ndcg@5": -0.065954,
         "avg_gold_blocks_per_query": 0.0
       }
     }
@@ -423,7 +423,7 @@
       {
         "strategy": "hsc_rag",
         "retriever": "dense",
-        "value": 0.870748
+        "value": 0.860544
       },
       {
         "strategy": "hsc_rag",
@@ -460,7 +460,7 @@
       {
         "strategy": "hsc_rag",
         "retriever": "dense",
-        "value": 0.6138
+        "value": 0.614164
       },
       {
         "strategy": "hsc_rag",
@@ -487,12 +487,12 @@
       {
         "strategy": "hsc_rag",
         "retriever": "dense",
-        "value": 0.655386
+        "value": 0.65043
       },
       {
         "strategy": "hsc_rag",
         "retriever": "hybrid",
-        "value": 0.646463
+        "value": 0.645209
       }
     ]
   }
