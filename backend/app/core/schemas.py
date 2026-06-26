@@ -222,3 +222,39 @@ class ChunkBatchAgentResponse(BaseModel):
     document_count: int
     total_chunks: int
     results: list[ChunkAgentResponse]
+
+
+AgentProvider = Literal["mock", "openai_compatible"]
+
+
+class LangChainAgentRequest(BaseModel):
+    """LangChain-backed agent request for online HSC-RAG orchestration."""
+
+    instruction: str
+    document: GovernedDocument | None = None
+    documents: list[GovernedDocument] = Field(default_factory=list)
+    strategy: ChunkStrategy = "hsc_rag"
+    config: dict[str, Any] = Field(default_factory=dict)
+    include_report: bool = True
+    preferred_tool: str | None = None
+    llm_provider: AgentProvider = "mock"
+    llm_model: str | None = None
+    llm_base_url: str | None = None
+    llm_api_key_env: str = "OPENAI_API_KEY"
+    llm_temperature: float = 0.1
+    llm_timeout_seconds: float = 60.0
+
+
+class LangChainAgentResponse(BaseModel):
+    """Response emitted by the LangChain orchestration layer."""
+
+    agent: str = "hsc-rag-langchain"
+    provider: AgentProvider
+    model: str | None = None
+    langchain_version: str | None = None
+    instruction: str
+    selected_tool: str | None = None
+    answer: str
+    tool_trace: list[dict[str, Any]] = Field(default_factory=list)
+    result: dict[str, Any] = Field(default_factory=dict)
+    warnings: list[str] = Field(default_factory=list)

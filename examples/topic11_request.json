@@ -1,0 +1,89 @@
+{
+  "document": {
+    "doc_id": "topic11_demo_doc",
+    "dataset": "topic4_normalized_demo",
+    "split": "handoff",
+    "source_doc_id": "source_contract_001",
+    "title": "Topic 11 JSON Handoff Demo",
+    "normalization_status": "provided_by_upstream",
+    "term_policy": "topic4_normalized_terms",
+    "governance_stage": "post_normalization_packaging",
+    "blocks": [
+      {
+        "block_id": "topic11_demo_doc_b001",
+        "doc_id": "topic11_demo_doc",
+        "type": "paragraph",
+        "text": "The upstream normalization agent has already unified company names, dates, units, and domain terms. HSC-RAG receives this governed block and packages it for downstream RAG consumption without changing the normalized wording.",
+        "order": 1,
+        "level": 1,
+        "title_path": [
+          "Governed Content",
+          "Normalized Terms"
+        ],
+        "source_anchor": {
+          "dataset": "topic4_normalized_demo",
+          "split": "handoff",
+          "source_doc_id": "source_contract_001",
+          "section_name": "Governed Content / Normalized Terms",
+          "paragraph_index": 1,
+          "extra": {
+            "page": 3,
+            "upstream_agent": "topic4_normalization"
+          }
+        },
+        "entity_tags": [
+          "HSC-RAG",
+          "Topic 4",
+          "Topic 5"
+        ],
+        "metadata": {
+          "normalized": true
+        }
+      },
+      {
+        "block_id": "topic11_demo_doc_b002",
+        "doc_id": "topic11_demo_doc",
+        "type": "table",
+        "text": "| Field | Standard Value | Evidence |\n|---|---|---|\n| Company | State Grid Corporation of China | normalized_alias |\n| Date | 2026-06-11 | iso_date |",
+        "order": 2,
+        "level": 1,
+        "title_path": [
+          "Governed Content",
+          "Normalized Terms"
+        ],
+        "source_anchor": {
+          "dataset": "topic4_normalized_demo",
+          "split": "handoff",
+          "source_doc_id": "source_contract_001",
+          "section_name": "Governed Content / Normalized Terms",
+          "paragraph_index": 2,
+          "asset_file": "tables/table_001.json",
+          "extra": {
+            "page": 3,
+            "upstream_agent": "topic4_normalization"
+          }
+        },
+        "entity_tags": [
+          "State Grid Corporation of China"
+        ],
+        "metadata": {
+          "protected_block": true
+        }
+      }
+    ],
+    "source_ref": {
+      "from_agent": "topic4_normalization",
+      "to_agent": "topic5_format_conversion"
+    },
+    "metadata": {
+      "handoff_role": "topic11_is_called_by_topic5"
+    }
+  },
+  "strategy": "hsc_rag",
+  "config": {
+    "min_tokens": 20,
+    "target_tokens": 120,
+    "max_tokens": 260
+  },
+  "include_report": true
+}

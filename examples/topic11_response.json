@@ -1,0 +1,102 @@
+{
+  "agent": "hsc-rag",
+  "strategy": "hsc_rag",
+  "doc_id": "topic11_demo_doc",
+  "chunks": [
+    {
+      "chunk_id": "topic11_demo_doc_hsc_rag_chunk_00001",
+      "doc_id": "topic11_demo_doc",
+      "dataset": "topic4_normalized_demo",
+      "split": "handoff",
+      "strategy": "hsc_rag",
+      "text": "[Governed Content > Normalized Terms] The upstream normalization agent has already unified company names, dates, units, and domain terms. HSC-RAG receives this governed block and packages it for downstream RAG consumption without changing the normalized wording. [Governed Content > Normalized Terms] | Field | Standard Value | Evidence | |---|---|---| | Company | State Grid Corporation of China | normalized_alias | | Date | 2026-06-11 | iso_date |",
+      "token_count": 56,
+      "title_path": [
+        "Governed Content",
+        "Normalized Terms"
+      ],
+      "source_blocks": [
+        "topic11_demo_doc_b001",
+        "topic11_demo_doc_b002"
+      ],
+      "source_anchor": {
+        "dataset": "topic4_normalized_demo",
+        "split": "handoff",
+        "source_doc_id": "source_contract_001",
+        "sections": [
+          "Governed Content / Normalized Terms"
+        ],
+        "first_block_id": "topic11_demo_doc_b001",
+        "last_block_id": "topic11_demo_doc_b002",
+        "block_count": 2,
+        "assets": [
+          "tables/table_001.json"
+        ]
+      },
+      "tags": [
+        "governed content",
+        "normalized terms",
+        "paragraph",
+        "table",
+        "hsc-rag",
+        "topic 4",
+        "topic 5",
+        "state grid corporation of china"
+      ],
+      "summary": "[Governed Content > Normalized Terms] The upstream normalization agent has already unified company names, dates, units, and domain terms.",
+      "entity_tags": [
+        "HSC-RAG",
+        "Topic 4",
+        "Topic 5",
+        "The",
+        "RAG",
+        "State Grid Corporation of China",
+        "Field",
+        "Standard Value",
+        "Evidence",
+        "Company",
+        "State Grid Corporation",
+        "China"
+      ],
+      "quality_flags": [
+        "length_ok",
+        "source_anchor_complete",
+        "protected_block_intact",
+        "title_path_consistent",
+        "final_flush",
+        "hsc_structure_aware"
+      ],
+      "metadata": {
+        "target_tokens": 120,
+        "max_tokens": 260,
+        "include_title_context": true
+      }
+    }
+  ],
+  "chunk_count": 1,
+  "report": {
+    "schema_version": "hsc-agent-api-v1",
+    "input_contract": "GovernedDocument",
+    "output_contract": "RagChunk[]",
+    "governance_stage": "post_normalization_packaging",
+    "normalization_status": "provided_by_upstream",
+    "config": {
+      "min_tokens": 20,
+      "target_tokens": 120,
+      "max_tokens": 260
+    },
+    "chunks": 1,
+    "total_tokens": 56,
+    "avg_tokens": 56.0,
+    "min_tokens": 56,
+    "max_tokens": 56,
+    "quality_flag_counts": {
+      "final_flush": 1,
+      "hsc_structure_aware": 1,
+      "length_ok": 1,
+      "protected_block_intact": 1,
+      "source_anchor_complete": 1,
+      "title_path_consistent": 1
+    }
+  }
+}

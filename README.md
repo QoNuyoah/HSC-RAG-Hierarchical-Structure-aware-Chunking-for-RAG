@@ -87,6 +87,7 @@ HSC_RAG
     ├── convert_dureader.py
     ├── convert_hotpotqa.py
     ├── run_agent_pipeline.py
+    ├── run_langchain_agent.py
     ├── run_chunking.py
     ├── run_llm_enrichment.py
     ├── run_retrieval_eval.py
@@ -123,6 +124,9 @@ scikit-learn
 numpy
 pandas
 sentence-transformers
+langchain
+langchain-openai
+langgraph
 ```
 
 主要前端依赖：
@@ -385,6 +389,7 @@ http://127.0.0.1:8000/api/health
 ```text
 POST /api/v1/chunk
 POST /api/v1/chunk/batch
+POST /api/v1/agent/run
 GET /api/overview
 GET /api/metrics?retriever=bm25
 GET /api/metrics?retriever=dense
@@ -701,4 +706,73 @@ chunks_hsc_rag_llm_enriched.jsonl
 llm_enrichment_summary.json
 agent_pipeline_summary.json
 agent_pipeline_summary.md
+```
+
+## LangChain Agent API
+
+The project exposes deterministic HSC-RAG chunking through a LangChain tool layer.
+LangChain is used for agent orchestration and tool selection; chunk boundaries are
+still produced by the local HSC-RAG implementation.
+
+Offline CLI demo:
+
+```powershell
+& E:\anaconda3\envs\HSC_RAG\python.exe scripts\run_langchain_agent.py `
+  --input data\processed\qasper\train\governed_documents.jsonl `
+  --limit-docs 1 `
+  --strategy hsc_rag `
+  --provider mock `
+  --output runs\langchain_agent_demo.json
+```
+
+Online endpoint:
+
+```text
+POST /api/v1/agent/run
+```
+
+Detailed usage:
+
+```text
+docs\langchain_agent_usage.md
+```
+
+## Topic 11 JSON Handoff Contract
+
+Topic 11 is a callable specialist agent between Topic 4 and Topic 5:
+
+```text
+Topic 4 normalized structured JSON
+-> Topic 11 HSC-RAG chunking and content organization
+-> chunk sequence JSON
+-> Topic 5 standard result package assembly
+```
+
+The formal online contract is JSON request to JSON response. JSONL files under
+`data\processed\**` are offline batch experiment artifacts used for retrieval
+evaluation and reproducibility.
+
+Formal service endpoints:
+
+```text
+POST /api/v1/chunk
+POST /api/v1/chunk/batch
+POST /api/v1/agent/run
+```
+
+Contract and examples:
+
+```text
+docs\topic11_json_contract.md
+docs\topic11_handoff_contract_zh.md
+examples\topic11_request.json
+examples\topic11_response.json
+```
+
+中文交付说明见 `docs\topic11_handoff_contract_zh.md`。该文档明确了课题 11 在数据治理链路中的边界：输入课题 4 或上游流程输出的 `GovernedDocument` JSON，输出课题 5 可调用和封装的 `RagChunk[]` JSON。
+
+验证正式 JSON 契约：
+
+```powershell
+& E:\anaconda3\envs\HSC_RAG\python.exe scripts\validate_topic11_contract.py
 ```
