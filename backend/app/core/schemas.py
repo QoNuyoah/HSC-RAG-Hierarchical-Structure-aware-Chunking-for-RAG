@@ -181,6 +181,7 @@ class ChunkRunReport(BaseModel):
     min_tokens: int | None = None
     max_tokens: int | None = None
     quality_flag_counts: dict[str, int] = Field(default_factory=dict)
+    boundary_score_summary: dict[str, Any] = Field(default_factory=dict)
     config: dict[str, Any] = Field(default_factory=dict)
     warnings: list[str] = Field(default_factory=list)
 
@@ -243,6 +244,7 @@ class LangChainAgentRequest(BaseModel):
     llm_api_key_env: str = "OPENAI_API_KEY"
     llm_temperature: float = 0.1
     llm_timeout_seconds: float = 60.0
+    llm_use_response_format: bool = True
 
 
 class LangChainAgentResponse(BaseModel):

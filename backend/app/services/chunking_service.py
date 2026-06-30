@@ -64,6 +64,43 @@ def build_chunk_report(doc: GovernedDocument, chunks: list[RagChunk], config: di
         "min_tokens": min(token_counts) if token_counts else None,
         "max_tokens": max(token_counts) if token_counts else None,
         "quality_flag_counts": dict(sorted(quality_flags.items())),
+        "boundary_score_summary": boundary_score_summary(chunks),
+    }
+
+
+def boundary_score_summary(chunks: list[RagChunk]) -> dict[str, Any]:
+    decisions = [
+        decision
+        for chunk in chunks
+        if isinstance((decision := (chunk.metadata or {}).get("closing_boundary_decision")), dict)
+    ]
+    if not decisions:
+        return {}
+
+    scores = [float(item.get("boundary_score", 0.0)) for item in decisions]
+    distances = [
+        float((item.get("signals") or {}).get("semantic_distance", 0.0))
+        for item in decisions
+    ]
+    similarities = [
+        float((item.get("signals") or {}).get("semantic_similarity", 0.0))
+        for item in decisions
+    ]
+    reasons = Counter(str(item.get("split_reason", "unknown")) for item in decisions)
+    semantic_triggered = sum(
+        1
+        for item in decisions
+        if (item.get("signals") or {}).get("semantic_boundary_triggered")
+    )
+    return {
+        "scored_boundaries": len(decisions),
+        "chunk_coverage_rate": round(len(decisions) / len(chunks), 4) if chunks else 0.0,
+        "avg_boundary_score": round(sum(scores) / len(scores), 4),
+        "max_boundary_score": round(max(scores), 4),
+        "avg_semantic_distance": round(sum(distances) / len(distances), 4),
+        "avg_semantic_similarity": round(sum(similarities) / len(similarities), 4),
+        "semantic_boundary_triggered": semantic_triggered,
+        "split_reason_counts": dict(sorted(reasons.items())),
     }
 
 

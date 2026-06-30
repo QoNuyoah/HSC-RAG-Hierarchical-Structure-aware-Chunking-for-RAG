@@ -69,7 +69,24 @@
       "metadata": {
         "target_tokens": 120,
         "max_tokens": 260,
-        "include_title_context": true
+        "include_title_context": true,
+        "boundary_policy": {
+          "version": "hsc-rag-boundary-v2",
+          "scoring_enabled": true,
+          "semantic_method": "local_bow_cosine_over_recent_blocks",
+          "semantic_window_blocks": 3,
+          "formula": "score = structure*w_s + semantic_distance*w_sem + length_pressure*w_l",
+          "weights": {
+            "structure": 0.45,
+            "semantic": 0.35,
+            "length": 0.2
+          },
+          "thresholds": {
+            "boundary_score": 0.62,
+            "soft_boundary_score": 0.52,
+            "semantic_distance": 0.72
+          }
+        }
       }
     }
   ],
@@ -97,6 +114,7 @@
       "protected_block_intact": 1,
       "source_anchor_complete": 1,
       "title_path_consistent": 1
-    }
+    },
+    "boundary_score_summary": {}
   }
 }

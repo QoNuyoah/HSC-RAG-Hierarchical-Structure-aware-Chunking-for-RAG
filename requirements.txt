@@ -10,3 +10,4 @@ sentence-transformers
 langchain>=1.3,<2
 langchain-openai>=1.3,<2
 langgraph>=1.2,<2
+pytest

@@ -75,6 +75,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--hsc-min", type=int, default=180)
     parser.add_argument("--hsc-target", type=int, default=512)
     parser.add_argument("--hsc-max", type=int, default=900)
+    parser.add_argument("--hsc-boundary-threshold", type=float, default=0.62)
+    parser.add_argument("--hsc-soft-boundary-threshold", type=float, default=0.52)
+    parser.add_argument("--hsc-semantic-distance-threshold", type=float, default=0.72)
+    parser.add_argument("--hsc-semantic-window-blocks", type=int, default=3)
 
     parser.add_argument("--run-eval", action="store_true", help="Run retrieval evaluation after chunking.")
     parser.add_argument("--gold-evidence", default=None, help="gold_evidence.jsonl for retrieval evaluation.")
@@ -226,6 +230,10 @@ def run_chunk_stage(
         hsc_min=args.hsc_min,
         hsc_target=args.hsc_target,
         hsc_max=args.hsc_max,
+        hsc_boundary_threshold=args.hsc_boundary_threshold,
+        hsc_soft_boundary_threshold=args.hsc_soft_boundary_threshold,
+        hsc_semantic_distance_threshold=args.hsc_semantic_distance_threshold,
+        hsc_semantic_window_blocks=args.hsc_semantic_window_blocks,
     )
     reports: list[dict[str, Any]] = []
     for strategy in parse_csv(args.strategies):

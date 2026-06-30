@@ -142,6 +142,23 @@ examples/topic11_response.json
 | `quality_flags` | string[] | 质量标记，如 `source_anchor_complete`、`title_path_consistent`。 |
 | `metadata` | object | 分段参数和扩展元数据。 |
 
+### HSC-RAG 边界解释字段
+
+为避免主算法被理解为普通规则切分器，`hsc_rag` 策略会在 chunk 的 `metadata` 中写入可解释边界信息：
+
+| 字段 | 说明 |
+|---|---|
+| `metadata.boundary_policy` | 当前 HSC-RAG 边界评分策略版本、公式、权重与阈值。 |
+| `metadata.closing_boundary_decision` | 当前 chunk 被收束时的边界决策。最终 chunk 没有右侧候选块时可为空。 |
+| `closing_boundary_decision.boundary_score` | 综合边界分，公式为 `structure_signal * w_s + semantic_distance * w_sem + length_pressure * w_l`。 |
+| `closing_boundary_decision.signals.structure_signal` | 标题路径变化、顶层章节变化、保护块切换等结构信号。 |
+| `closing_boundary_decision.signals.semantic_similarity` | 当前 buffer 与右侧候选块的本地词袋余弦相似度。 |
+| `closing_boundary_decision.signals.semantic_distance` | `1 - semantic_similarity`，越高表示语义漂移越明显。 |
+| `closing_boundary_decision.signals.length_pressure` | 当前 chunk 长度相对 `target_tokens` 的压力。 |
+| `closing_boundary_decision.split_reason` | 实际收束原因，如 `semantic_boundary`、`section_boundary_respected`、`target_length_boundary`、`max_length_boundary`。 |
+
+该设计把任务书中的“结构/语义感知分段”落到可审计字段上：标题层级提供结构证据，语义距离提供内容漂移证据，长度压力保证 RAG chunk 可消费。
+
 ## 5. 在线接口
 
 正式推荐给课题 5 调用的接口：

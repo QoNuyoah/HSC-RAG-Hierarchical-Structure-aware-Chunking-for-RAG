@@ -267,6 +267,16 @@ evidence_match_rate: 1.0
 - semantic 的 chunk 更细，title 一致性较高，但 chunk 数量明显增多，证据容易被拆散。
 - HSC-RAG 在保持适中 chunk 数量的同时，将 `mixed_title_paths` 从 fixed 的 32 降到 16，更符合数据治理场景下“结构一致、可追溯、可消费”的要求。
 
+HSC-RAG 主算法会为每个收束边界记录可解释评分，写入 `metadata.closing_boundary_decision`：
+
+```text
+boundary_score = structure_signal * w_structure
+               + semantic_distance * w_semantic
+               + length_pressure * w_length
+```
+
+其中 `structure_signal` 来自标题路径、顶层章节、保护块切换等结构证据；`semantic_distance` 来自当前 buffer 与右侧候选块的本地词袋余弦距离；`length_pressure` 表示当前 chunk 接近目标长度的程度。`split_reason` 会记录为 `semantic_boundary`、`section_boundary_respected`、`target_length_boundary` 或 `max_length_boundary`，用于证明主算法是“结构/语义感知分段”，而不是普通定长或纯标题规则切分。
+
 ## 运行检索评估
 
 运行 BM25 / Dense / Hybrid 三类检索评估：
@@ -415,6 +425,8 @@ POST http://127.0.0.1:8000/api/v1/chunk
 - 输出：`RagChunk[]`，每个 chunk 含正文、长度、标题路径、来源块、原文回链、标签、摘要、实体标签和质量标记。
 - 默认策略：`hsc_rag`。
 - 可选策略：`fixed`、`recursive`、`semantic`、`hsc_rag`，用于实验对比。
+
+当需要展示大模型参与时，使用 `POST /api/v1/agent/run` 并在 instruction 中明确要求“摘要、标签、实体标签、语义完整性评分或大模型语义组织”。LangChain agent 会调用 `chunk_and_enrich_current_document` / `chunk_and_enrich_current_batch` 工具：先运行确定性 HSC-RAG 分段，再调用 LLM semantic organization skill，将大模型结果写入 `metadata.llm_enrichment`。这样大模型承担的是任务书要求的内容组织与质量评价，而不是只做外层路由。
 
 请求示例：
 
@@ -737,6 +749,27 @@ Detailed usage:
 docs\langchain_agent_usage.md
 ```
 
+SiliconFlow Qwen API demo fields for `POST /api/v1/agent/run`:
+
+```json
+{
+  "preferred_tool": "chunk_and_enrich_current_document",
+  "llm_provider": "openai_compatible",
+  "llm_model": "Qwen/Qwen3-VL-32B-Instruct",
+  "llm_base_url": "https://api.siliconflow.cn/v1",
+  "llm_api_key_env": "SILICONFLOW_API_KEY",
+  "llm_timeout_seconds": 240,
+  "llm_use_response_format": false
+}
+```
+
+`preferred_tool` makes the workflow explicit: local HSC-RAG creates auditable
+chunks first, then the configured Qwen model performs semantic organization
+inside `chunk_and_enrich_current_document`. A successful real-model call is
+visible in `result.report.llm_semantic_organization.provider_execution_counts`
+and in each chunk's `metadata.llm_enrichment.provider_execution =
+remote_llm_call`.
+
 ## Topic 11 JSON Handoff Contract
 
 Topic 11 is a callable specialist agent between Topic 4 and Topic 5:
@@ -776,3 +809,16 @@ examples\topic11_response.json
 ```powershell
 & E:\anaconda3\envs\HSC_RAG\python.exe scripts\validate_topic11_contract.py
 ```
+
+运行正式 pytest 测试：
+
+```powershell
+$env:PYTHONDONTWRITEBYTECODE="1"
+& E:\anaconda3\envs\HSC_RAG\python.exe -m pytest backend\tests -p no:cacheprovider -q
+```
+
+当前测试覆盖：
+
+- `test_chunk_contract.py`：验证 `examples/topic11_request.json` 的服务输出与 `examples/topic11_response.json` 保持一致。
+- `test_hsc_rag_protected_blocks.py`：验证 table / code / formula 等 protected block 不被拆散。
+- `test_source_anchor_complete.py`：验证 `source_blocks` 与 `source_anchor` 聚合字段完整一致。

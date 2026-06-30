@@ -8,6 +8,7 @@ import json
 import sys
 from collections import Counter
 from pathlib import Path
+from typing import Any
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -58,6 +59,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--hsc-min", type=int, default=180)
     parser.add_argument("--hsc-target", type=int, default=512)
     parser.add_argument("--hsc-max", type=int, default=900)
+    parser.add_argument("--hsc-boundary-threshold", type=float, default=0.62)
+    parser.add_argument("--hsc-soft-boundary-threshold", type=float, default=0.52)
+    parser.add_argument("--hsc-semantic-distance-threshold", type=float, default=0.72)
+    parser.add_argument("--hsc-semantic-window-blocks", type=int, default=3)
     return parser.parse_args()
 
 
@@ -86,8 +91,45 @@ def report_for(
         min_tokens=min(token_counts) if token_counts else None,
         max_tokens=max(token_counts) if token_counts else None,
         quality_flag_counts=dict(sorted(flag_counts.items())),
+        boundary_score_summary=boundary_score_summary(chunks),
         config=config,
     )
+
+
+def boundary_score_summary(chunks: list[RagChunk]) -> dict[str, Any]:
+    decisions = []
+    for chunk in chunks:
+        decision = (chunk.metadata or {}).get("closing_boundary_decision")
+        if isinstance(decision, dict):
+            decisions.append(decision)
+    if not decisions:
+        return {}
+
+    scores = [float(item.get("boundary_score", 0.0)) for item in decisions]
+    distances = [
+        float((item.get("signals") or {}).get("semantic_distance", 0.0))
+        for item in decisions
+    ]
+    similarities = [
+        float((item.get("signals") or {}).get("semantic_similarity", 0.0))
+        for item in decisions
+    ]
+    reasons = Counter(str(item.get("split_reason", "unknown")) for item in decisions)
+    semantic_triggered = sum(
+        1
+        for item in decisions
+        if (item.get("signals") or {}).get("semantic_boundary_triggered")
+    )
+    return {
+        "scored_boundaries": len(decisions),
+        "chunk_coverage_rate": round(len(decisions) / len(chunks), 4) if chunks else 0.0,
+        "avg_boundary_score": round(sum(scores) / len(scores), 4),
+        "max_boundary_score": round(max(scores), 4),
+        "avg_semantic_distance": round(sum(distances) / len(distances), 4),
+        "avg_semantic_similarity": round(sum(similarities) / len(similarities), 4),
+        "semantic_boundary_triggered": semantic_triggered,
+        "split_reason_counts": dict(sorted(reasons.items())),
+    }
 
 
 def run_strategy(strategy: str, docs, args: argparse.Namespace) -> tuple[list[RagChunk], dict]:
@@ -121,6 +163,10 @@ def run_strategy(strategy: str, docs, args: argparse.Namespace) -> tuple[list[Ra
             min_tokens=args.hsc_min,
             target_tokens=args.hsc_target,
             max_tokens=args.hsc_max,
+            semantic_boundary_threshold=args.hsc_boundary_threshold,
+            semantic_soft_boundary_threshold=args.hsc_soft_boundary_threshold,
+            semantic_distance_threshold=args.hsc_semantic_distance_threshold,
+            semantic_window_blocks=args.hsc_semantic_window_blocks,
         )
         chunker = HscRagChunker(config)
         config_dict = config.__dict__

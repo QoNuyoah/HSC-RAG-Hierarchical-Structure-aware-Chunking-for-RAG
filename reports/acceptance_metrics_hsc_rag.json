@@ -1,62 +1,79 @@
 {
   "strategy": "hsc_rag",
-  "chunks": 61,
+  "chunks": 62,
   "content_blocks": 320,
   "protected_blocks": 32,
   "output_field_completeness_rate": 100.0,
   "source_anchor_completeness_rate": 100.0,
-  "target_length_hit_rate": 96.72,
+  "target_length_hit_rate": 96.77,
   "no_sentence_break_rate": 100.0,
   "protected_block_integrity_rate": 100.0,
   "retrieval_uplift_vs_fixed_bm25": {
     "recall@1": {
       "fixed": 0.157738,
-      "hsc_rag": 0.217262,
-      "absolute_delta": 0.059524,
-      "relative_uplift_percent": 37.74
+      "hsc_rag": 0.190476,
+      "absolute_delta": 0.032738,
+      "relative_uplift_percent": 20.75
     },
     "recall@3": {
       "fixed": 0.4375,
-      "hsc_rag": 0.568452,
-      "absolute_delta": 0.130952,
-      "relative_uplift_percent": 29.93
+      "hsc_rag": 0.550595,
+      "absolute_delta": 0.113095,
+      "relative_uplift_percent": 25.85
     },
     "recall@5": {
       "fixed": 0.633929,
-      "hsc_rag": 0.723214,
-      "absolute_delta": 0.089285,
-      "relative_uplift_percent": 14.08
+      "hsc_rag": 0.705357,
+      "absolute_delta": 0.071428,
+      "relative_uplift_percent": 11.27
     },
     "mrr": {
       "fixed": 0.450993,
-      "hsc_rag": 0.515704,
-      "absolute_delta": 0.064711,
-      "relative_uplift_percent": 14.35
+      "hsc_rag": 0.488919,
+      "absolute_delta": 0.037926,
+      "relative_uplift_percent": 8.41
     },
     "ndcg@5": {
       "fixed": 0.438077,
-      "hsc_rag": 0.509134,
-      "absolute_delta": 0.071057,
-      "relative_uplift_percent": 16.22
+      "hsc_rag": 0.485041,
+      "absolute_delta": 0.046964,
+      "relative_uplift_percent": 10.72
     }
   },
   "field_non_empty_counts": {
-    "tags": 61,
-    "summary": 61,
-    "entity_tags": 61,
-    "source_blocks": 61
+    "tags": 62,
+    "summary": 62,
+    "entity_tags": 62,
+    "source_blocks": 62
   },
   "quality_flag_counts": {
     "final_flush": 5,
-    "hsc_structure_aware": 61,
-    "length_ok": 59,
-    "max_length_boundary": 1,
-    "mixed_title_paths": 16,
+    "hsc_boundary_scored": 57,
+    "hsc_structure_aware": 62,
+    "length_ok": 60,
+    "max_length_boundary": 3,
+    "mixed_title_paths": 19,
     "protected_block_intact": 5,
-    "section_boundary_respected": 55,
+    "section_boundary_respected": 51,
+    "semantic_boundary": 3,
+    "semantic_shift_observed": 6,
     "short_chunk": 2,
-    "source_anchor_complete": 61,
-    "title_path_consistent": 38
+    "source_anchor_complete": 62,
+    "title_path_consistent": 36
+  },
+  "boundary_score_summary": {
+    "scored_boundaries": 57,
+    "chunk_coverage_rate": 0.9194,
+    "avg_boundary_score": 0.7312,
+    "max_boundary_score": 0.877,
+    "avg_semantic_distance": 0.5673,
+    "avg_semantic_similarity": 0.4327,
+    "semantic_boundary_triggered": 3,
+    "split_reason_counts": {
+      "max_length_boundary": 3,
+      "section_boundary_respected": 51,
+      "semantic_boundary": 3
+    }
   },
   "protected_block_types": {
     "figure": 10,
@@ -84,6 +101,7 @@
     "目标长度区间命中率": "达标",
     "原文回链完整率": "达标",
     "下游检索提升": "达标",
+    "结构语义边界可解释": "达标",
     "语义完整人工评价": "达标",
     "标签与摘要人工评价": "达标"
   }

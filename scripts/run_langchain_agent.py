@@ -42,6 +42,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--api-key-env", default="OPENAI_API_KEY")
     parser.add_argument("--temperature", type=float, default=0.1)
     parser.add_argument("--timeout-seconds", type=float, default=60.0)
+    parser.add_argument(
+        "--llm-disable-response-format",
+        action="store_true",
+        help="Do not send OpenAI JSON response_format during chunk enrichment.",
+    )
     parser.add_argument("--output", default=None, help="Optional JSON output path.")
     return parser.parse_args()
 
@@ -66,6 +71,7 @@ def main() -> None:
         llm_api_key_env=args.api_key_env,
         llm_temperature=args.temperature,
         llm_timeout_seconds=args.timeout_seconds,
+        llm_use_response_format=not args.llm_disable_response_format,
     )
     response = run_langchain_agent(request)
     payload = response.model_dump(mode="json")

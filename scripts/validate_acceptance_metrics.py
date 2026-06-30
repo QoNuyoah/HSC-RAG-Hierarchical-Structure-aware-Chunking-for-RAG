@@ -113,6 +113,23 @@ def manual_eval_value(manual_eval: dict[str, Any], key: str) -> str:
     return f"抽样 {manual_eval['completed_rows']} 个 chunks，均分 {item['avg']}/5，最低 {item['min']}/5"
 
 
+def boundary_score_status(summary: dict[str, Any]) -> str:
+    if not summary:
+        return "待重新生成"
+    return "达标" if summary.get("chunk_coverage_rate", 0) >= 0.80 else "未达标"
+
+
+def boundary_score_value(summary: dict[str, Any]) -> str:
+    if not summary:
+        return "需要重新运行 run_chunking.py 生成带边界评分的 chunks"
+    return (
+        f"覆盖 {summary.get('chunk_coverage_rate', 0) * 100:.1f}%，"
+        f"平均边界分 {summary.get('avg_boundary_score', 0)}，"
+        f"平均语义距离 {summary.get('avg_semantic_distance', 0)}，"
+        f"语义触发 {summary.get('semantic_boundary_triggered', 0)} 次"
+    )
+
+
 def field_ok(chunk: dict[str, Any]) -> bool:
     for field, expected_type in REQUIRED_CHUNK_FIELDS.items():
         value = chunk.get(field)
@@ -174,6 +191,7 @@ def main() -> None:
         and chunk.get("source_anchor", {}).get("block_count") == len(chunk.get("source_blocks", []))
     ]
     length_ok = chunk_report.get("quality_flag_counts", {}).get("length_ok", 0)
+    boundary_summary = chunk_report.get("boundary_score_summary", {})
 
     fixed_bm25 = None
     hsc_bm25 = None
@@ -223,6 +241,7 @@ def main() -> None:
             "source_blocks": sum(1 for chunk in chunks if chunk.get("source_blocks")),
         },
         "quality_flag_counts": chunk_report.get("quality_flag_counts", {}),
+        "boundary_score_summary": boundary_summary,
         "protected_block_types": dict(Counter(block.get("type") for block in protected_blocks)),
         "manual_evaluation": manual_eval,
         "acceptance_status": {
@@ -232,6 +251,7 @@ def main() -> None:
             "目标长度区间命中率": pass_fail(length_rate, 0.90),
             "原文回链完整率": pass_fail(anchor_rate, 1.0),
             "下游检索提升": "达标" if retrieval_ok else "未达标",
+            "结构语义边界可解释": boundary_score_status(boundary_summary),
             "语义完整人工评价": manual_eval_status(manual_eval, "semantic_integrity"),
             "标签与摘要人工评价": manual_eval_status(manual_eval, "tag_summary"),
         },
@@ -248,6 +268,7 @@ def main() -> None:
         ("目标长度区间命中率", "quality_flags 中 length_ok 的 chunk 占比", f"{metrics['target_length_hit_rate']}%", metrics["acceptance_status"]["目标长度区间命中率"]),
         ("原文回链完整率", "source_anchor 与 source_blocks 完整一致", f"{metrics['source_anchor_completeness_rate']}%", metrics["acceptance_status"]["原文回链完整率"]),
         ("下游检索提升", "HSC-RAG 相对 fixed 的 BM25 Recall@5 与 nDCG@5 相对提升均 >= 10%", f"Recall@5 +{uplift.get('recall@5', {}).get('relative_uplift_percent')}%; nDCG@5 +{uplift.get('ndcg@5', {}).get('relative_uplift_percent')}%", metrics["acceptance_status"]["下游检索提升"]),
+        ("结构/语义边界可解释", "每个由 HSC-RAG 主算法收束的 chunk 记录 boundary_score、结构信号、语义距离、长度压力和 split_reason", boundary_score_value(boundary_summary), metrics["acceptance_status"]["结构语义边界可解释"]),
         ("语义完整", "人工抽样评价 chunk 是否围绕同一主题、上下文是否足够、是否无明显断裂", manual_eval_value(manual_eval, "semantic_integrity"), metrics["acceptance_status"]["语义完整人工评价"]),
         ("打标与摘要", "人工抽样评价标签准确率、实体标签可用性与摘要忠实度", manual_eval_value(manual_eval, "tag_summary"), metrics["acceptance_status"]["标签与摘要人工评价"]),
     ]
@@ -272,6 +293,7 @@ def main() -> None:
             "",
             "- “不破句率”采用工程可验证口径：HSC-RAG 以 `GovernedBlock` 为最小治理内容单元进行封装；当前样本中每个内容块仅出现在一个 HSC-RAG chunk 中，说明没有发生跨 chunk 的句中/块内截断。",
             "- “期望输出字段完整”检查每个 chunk 是否包含 `text/token_count/tags/summary/entity_tags/source_blocks/source_anchor/quality_flags` 等下游消费必需字段。",
+            "- “结构/语义边界可解释”读取 HSC-RAG chunk metadata 中的 `closing_boundary_decision`，用于证明主算法不是纯固定规则，而是综合标题结构、语义距离和长度压力进行边界决策。",
             f"- “语义完整”和“打标与摘要”读取 `{args.manual_eval_csv}`。建议抽样 20 个 chunks；均分 >= 4.0 且最低分 >= 3.0 记为达标。",
             "",
         ]

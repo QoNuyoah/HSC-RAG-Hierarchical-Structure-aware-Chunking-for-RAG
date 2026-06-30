@@ -3,7 +3,11 @@
 
 from __future__ import annotations
 
+import math
+import re
+from collections import Counter
 from dataclasses import dataclass
+from typing import Any
 
 from app.chunkers.common import (
     PROTECTED_BLOCK_TYPES,
@@ -25,6 +29,36 @@ class HscRagConfig:
     include_title_context: bool = True
     merge_short_chunks: bool = True
     protect_blocks: bool = True
+    semantic_boundary_scoring: bool = True
+    semantic_boundary_threshold: float = 0.62
+    semantic_soft_boundary_threshold: float = 0.52
+    semantic_distance_threshold: float = 0.72
+    semantic_window_blocks: int = 3
+    structure_signal_weight: float = 0.45
+    semantic_signal_weight: float = 0.35
+    length_signal_weight: float = 0.20
+
+
+@dataclass(frozen=True)
+class BoundaryDecision:
+    should_split: bool
+    reason: str
+    score: float
+    signals: dict[str, Any]
+
+    def as_metadata(self) -> dict[str, Any]:
+        return {
+            "should_split": self.should_split,
+            "split_reason": self.reason,
+            "boundary_score": self.score,
+            "signals": self.signals,
+        }
+
+
+TOKEN_RE = re.compile(
+    r"[A-Za-z0-9_]+(?:[-'][A-Za-z0-9_]+)?|[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]"
+)
+BOUNDARY_POLICY_VERSION = "hsc-rag-boundary-v2"
 
 
 class HscRagChunker:
@@ -60,13 +94,30 @@ class HscRagChunker:
         buffer_tokens = 0
         index = 1
 
-        def flush(extra_flags: list[str] | None = None) -> None:
+        def flush(
+            extra_flags: list[str] | None = None,
+            decision: BoundaryDecision | None = None,
+        ) -> None:
             nonlocal buffer, buffer_texts, buffer_tokens, index
             if not buffer:
                 buffer_texts = []
                 buffer_tokens = 0
                 return
             text = "\n\n".join(buffer_texts)
+            metadata: dict[str, Any] = {
+                "target_tokens": self.config.target_tokens,
+                "max_tokens": self.config.max_tokens,
+                "include_title_context": self.config.include_title_context,
+                "boundary_policy": self._boundary_policy_metadata(),
+            }
+            flags = list(extra_flags or [])
+            if decision is not None:
+                metadata["closing_boundary_decision"] = decision.as_metadata()
+                flags.append("hsc_boundary_scored")
+                if decision.signals.get("semantic_boundary_triggered"):
+                    flags.append("semantic_boundary")
+                elif decision.signals.get("semantic_distance", 0.0) >= self.config.semantic_distance_threshold:
+                    flags.append("semantic_shift_observed")
             chunks.append(
                 make_chunk(
                     doc=doc,
@@ -76,12 +127,8 @@ class HscRagChunker:
                     blocks=buffer,
                     min_tokens=self.config.min_tokens,
                     max_tokens=self.config.max_tokens,
-                    extra_flags=(extra_flags or []) + ["hsc_structure_aware"],
-                    metadata={
-                        "target_tokens": self.config.target_tokens,
-                        "max_tokens": self.config.max_tokens,
-                        "include_title_context": self.config.include_title_context,
-                    },
+                    extra_flags=flags + ["hsc_structure_aware"],
+                    metadata=metadata,
                 )
             )
             index += 1
@@ -117,6 +164,7 @@ class HscRagChunker:
                         metadata={
                             "target_tokens": self.config.target_tokens,
                             "max_tokens": self.config.max_tokens,
+                            "boundary_policy": self._boundary_policy_metadata(),
                             "protected_block_type": unit.type,
                         },
                     )
@@ -143,6 +191,7 @@ class HscRagChunker:
                             metadata={
                                 "target_tokens": self.config.target_tokens,
                                 "source_block_token_estimate": unit_tokens,
+                                "boundary_policy": self._boundary_policy_metadata(),
                             },
                         )
                     )
@@ -151,13 +200,17 @@ class HscRagChunker:
 
             if buffer:
                 would_exceed = buffer_tokens + unit_tokens > self.config.max_tokens
-                should_respect_section = (
-                    not same_section
-                    and buffer_tokens >= self.config.min_tokens
+                decision = self._score_boundary(
+                    buffer=buffer,
+                    next_block=unit,
+                    buffer_tokens=buffer_tokens,
+                    next_tokens=unit_tokens,
+                    same_section=same_section,
+                    would_exceed=would_exceed,
+                    next_is_protected=protected,
                 )
-                if would_exceed or should_respect_section:
-                    flag = "section_boundary_respected" if should_respect_section else "max_length_boundary"
-                    flush([flag])
+                if decision.should_split:
+                    flush([decision.reason], decision=decision)
 
             buffer.append(unit)
             buffer_texts.append(text)
@@ -165,6 +218,195 @@ class HscRagChunker:
 
         flush(["final_flush"])
         return chunks
+
+    def _score_boundary(
+        self,
+        *,
+        buffer: list[GovernedBlock],
+        next_block: GovernedBlock,
+        buffer_tokens: int,
+        next_tokens: int,
+        same_section: bool,
+        would_exceed: bool,
+        next_is_protected: bool,
+    ) -> BoundaryDecision:
+        left = buffer[-1]
+        title_path_changed = tuple(left.title_path) != tuple(next_block.title_path)
+        top_title_changed = bool(
+            left.title_path
+            and next_block.title_path
+            and left.title_path[0] != next_block.title_path[0]
+        )
+        block_type_changed = left.type != next_block.type
+        semantic_similarity = self._semantic_similarity(buffer, next_block)
+        semantic_distance = round(1.0 - semantic_similarity, 4)
+        structure_signal = self._structure_signal(
+            title_path_changed=title_path_changed,
+            top_title_changed=top_title_changed,
+            block_type_changed=block_type_changed,
+            same_section=same_section,
+            next_is_protected=next_is_protected,
+        )
+        length_pressure = round(
+            min(1.0, buffer_tokens / max(1, self.config.target_tokens)),
+            4,
+        )
+        score = round(
+            (
+                self.config.structure_signal_weight * structure_signal
+                + self.config.semantic_signal_weight * semantic_distance
+                + self.config.length_signal_weight * length_pressure
+            ),
+            4,
+        )
+
+        semantic_boundary_triggered = (
+            self.config.semantic_boundary_scoring
+            and semantic_distance >= self.config.semantic_distance_threshold
+            and buffer_tokens >= self.config.min_tokens
+            and length_pressure >= 0.65
+        )
+        section_boundary_triggered = (
+            not same_section
+            and buffer_tokens >= self.config.min_tokens
+            and score >= self.config.semantic_soft_boundary_threshold
+        )
+        scored_boundary_triggered = (
+            self.config.semantic_boundary_scoring
+            and buffer_tokens >= self.config.min_tokens
+            and score >= self.config.semantic_boundary_threshold
+        )
+        target_length_boundary = (
+            buffer_tokens >= self.config.target_tokens
+            and score >= self.config.semantic_soft_boundary_threshold
+        )
+
+        if would_exceed:
+            should_split = True
+            reason = "max_length_boundary"
+        elif semantic_boundary_triggered:
+            should_split = True
+            reason = "semantic_boundary"
+        elif section_boundary_triggered:
+            should_split = True
+            reason = "section_boundary_respected"
+        elif scored_boundary_triggered:
+            should_split = True
+            reason = "scored_structure_semantic_boundary"
+        elif target_length_boundary:
+            should_split = True
+            reason = "target_length_boundary"
+        else:
+            should_split = False
+            reason = "continue_accumulating"
+
+        signals = {
+            "policy_version": BOUNDARY_POLICY_VERSION,
+            "structure_signal": structure_signal,
+            "semantic_similarity": semantic_similarity,
+            "semantic_distance": semantic_distance,
+            "length_pressure": length_pressure,
+            "buffer_tokens": buffer_tokens,
+            "next_block_tokens": next_tokens,
+            "target_tokens": self.config.target_tokens,
+            "max_tokens": self.config.max_tokens,
+            "same_section": same_section,
+            "title_path_changed": title_path_changed,
+            "top_title_changed": top_title_changed,
+            "block_type_changed": block_type_changed,
+            "next_block_type": next_block.type,
+            "next_is_protected": next_is_protected,
+            "would_exceed_max_tokens": would_exceed,
+            "semantic_boundary_triggered": semantic_boundary_triggered,
+            "section_boundary_triggered": section_boundary_triggered,
+            "scored_boundary_triggered": scored_boundary_triggered,
+            "target_length_boundary": target_length_boundary,
+            "weights": {
+                "structure": self.config.structure_signal_weight,
+                "semantic": self.config.semantic_signal_weight,
+                "length": self.config.length_signal_weight,
+            },
+            "thresholds": {
+                "boundary_score": self.config.semantic_boundary_threshold,
+                "soft_boundary_score": self.config.semantic_soft_boundary_threshold,
+                "semantic_distance": self.config.semantic_distance_threshold,
+            },
+            "left_block_id": left.block_id,
+            "right_block_id": next_block.block_id,
+            "left_title_path": left.title_path,
+            "right_title_path": next_block.title_path,
+        }
+        return BoundaryDecision(
+            should_split=should_split,
+            reason=reason,
+            score=score,
+            signals=signals,
+        )
+
+    def _structure_signal(
+        self,
+        *,
+        title_path_changed: bool,
+        top_title_changed: bool,
+        block_type_changed: bool,
+        same_section: bool,
+        next_is_protected: bool,
+    ) -> float:
+        if top_title_changed:
+            return 1.0
+        if title_path_changed:
+            return 0.85
+        if not same_section:
+            return 0.7
+        if next_is_protected:
+            return 0.45
+        if block_type_changed:
+            return 0.25
+        return 0.0
+
+    def _semantic_similarity(
+        self,
+        buffer: list[GovernedBlock],
+        next_block: GovernedBlock,
+    ) -> float:
+        if not self.config.semantic_boundary_scoring:
+            return 1.0
+        left_blocks = buffer[-max(1, self.config.semantic_window_blocks) :]
+        left_text = " ".join(block_text(block, include_title_path=True) for block in left_blocks)
+        right_text = block_text(next_block, include_title_path=True)
+        left_counter = self._token_counter(left_text)
+        right_counter = self._token_counter(right_text)
+        if not left_counter or not right_counter:
+            return 0.0
+        dot = sum(left_counter[token] * right_counter.get(token, 0) for token in left_counter)
+        left_norm = math.sqrt(sum(value * value for value in left_counter.values()))
+        right_norm = math.sqrt(sum(value * value for value in right_counter.values()))
+        if left_norm == 0.0 or right_norm == 0.0:
+            return 0.0
+        return round(max(0.0, min(1.0, dot / (left_norm * right_norm))), 4)
+
+    def _token_counter(self, text: str) -> Counter[str]:
+        tokens = [token.lower() for token in TOKEN_RE.findall(normalize_text(text))]
+        return Counter(token for token in tokens if len(token) > 1 or not token.isascii())
+
+    def _boundary_policy_metadata(self) -> dict[str, Any]:
+        return {
+            "version": BOUNDARY_POLICY_VERSION,
+            "scoring_enabled": self.config.semantic_boundary_scoring,
+            "semantic_method": "local_bow_cosine_over_recent_blocks",
+            "semantic_window_blocks": self.config.semantic_window_blocks,
+            "formula": "score = structure*w_s + semantic_distance*w_sem + length_pressure*w_l",
+            "weights": {
+                "structure": self.config.structure_signal_weight,
+                "semantic": self.config.semantic_signal_weight,
+                "length": self.config.length_signal_weight,
+            },
+            "thresholds": {
+                "boundary_score": self.config.semantic_boundary_threshold,
+                "soft_boundary_score": self.config.semantic_soft_boundary_threshold,
+                "semantic_distance": self.config.semantic_distance_threshold,
+            },
+        }
 
     def _merge_short_chunks(self, chunks: list[RagChunk]) -> list[RagChunk]:
         if not chunks:

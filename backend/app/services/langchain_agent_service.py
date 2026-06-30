@@ -23,6 +23,8 @@ from app.core.schemas import (
     LangChainAgentRequest,
     LangChainAgentResponse,
 )
+from app.llm.chunk_enricher import ChunkEnrichmentConfig, ChunkSemanticEnricher
+from app.llm.providers import build_json_provider
 from app.services.chunking_service import run_chunk_batch_request, run_chunk_request
 
 try:
@@ -50,7 +52,10 @@ SYSTEM_PROMPT = """You are the HSC-RAG LangChain agent.
 You must use the available tools to operate on the governed document context
 already attached to this request. Do not invent chunks. The chunk boundaries are
 produced by deterministic HSC-RAG tools; your role is selecting and explaining
-the right tool call."""
+the right tool call. When the instruction asks for summaries, tags, entities,
+semantic organization, or LLM participation, call the chunk-and-enrich tool so
+the model contributes to post-chunk semantic organization instead of only
+routing the request."""
 
 
 class EmptyToolArgs(BaseModel):
@@ -133,6 +138,79 @@ class _LangChainRuntime:
                 response,
             )
 
+        def chunk_and_enrich_current_document(
+            strategy: ChunkStrategy | None = None,
+            config: dict[str, Any] | None = None,
+            include_report: bool | None = None,
+        ) -> str:
+            """Chunk the current document and run LLM semantic organization over the chunks."""
+
+            if len(self.documents) != 1:
+                raise ValueError("chunk_and_enrich_current_document requires exactly one governed document.")
+            request = ChunkAgentRequest(
+                document=self.documents[0],
+                strategy=strategy or self.request.strategy,
+                config=self._resolve_config(config),
+                include_report=self._resolve_include_report(include_report),
+            )
+            response = run_chunk_request(request)
+            enriched_chunks = self._enrich_chunks(response.chunks)
+            response = response.model_copy(update={"chunks": enriched_chunks})
+            payload = response.model_dump(mode="json")
+            if request.include_report:
+                payload.setdefault("report", {})["llm_semantic_organization"] = self._llm_report(enriched_chunks)
+            return self._record_tool_result(
+                "chunk_and_enrich_current_document",
+                {
+                    "strategy": request.strategy,
+                    "config": request.config,
+                    "include_report": request.include_report,
+                    "llm_provider": self.request.llm_provider,
+                    "llm_model": self.request.llm_model or self._default_enrichment_model(),
+                },
+                payload,
+            )
+
+        def chunk_and_enrich_current_batch(
+            strategy: ChunkStrategy | None = None,
+            config: dict[str, Any] | None = None,
+            include_report: bool | None = None,
+        ) -> str:
+            """Chunk every current document and run LLM semantic organization over all chunks."""
+
+            if not self.documents:
+                raise ValueError("chunk_and_enrich_current_batch requires at least one governed document.")
+            request = ChunkBatchAgentRequest(
+                documents=self.documents,
+                strategy=strategy or self.request.strategy,
+                config=self._resolve_config(config),
+                include_report=self._resolve_include_report(include_report),
+            )
+            response = run_chunk_batch_request(request)
+            enriched_results = []
+            for item in response.results:
+                enriched_chunks = self._enrich_chunks(item.chunks)
+                result_payload = item.model_copy(update={"chunks": enriched_chunks}).model_dump(mode="json")
+                if request.include_report:
+                    result_payload.setdefault("report", {})["llm_semantic_organization"] = self._llm_report(
+                        enriched_chunks
+                    )
+                enriched_results.append(result_payload)
+            payload = response.model_dump(mode="json")
+            payload["results"] = enriched_results
+            return self._record_tool_result(
+                "chunk_and_enrich_current_batch",
+                {
+                    "strategy": request.strategy,
+                    "config": request.config,
+                    "include_report": request.include_report,
+                    "document_count": len(self.documents),
+                    "llm_provider": self.request.llm_provider,
+                    "llm_model": self.request.llm_model or self._default_enrichment_model(),
+                },
+                payload,
+            )
+
         return [
             StructuredTool.from_function(
                 inspect_hsc_rag_context,
@@ -150,6 +228,25 @@ class _LangChainRuntime:
                 chunk_current_batch,
                 name="chunk_current_batch",
                 description="Run deterministic HSC-RAG chunking for all attached governed documents.",
+                args_schema=ChunkToolArgs,
+            ),
+            StructuredTool.from_function(
+                chunk_and_enrich_current_document,
+                name="chunk_and_enrich_current_document",
+                description=(
+                    "Run HSC-RAG chunking for one governed document, then use the configured LLM "
+                    "semantic organization skill to add faithful summaries, topic tags, entity tags, "
+                    "semantic integrity scores, and quality reasons."
+                ),
+                args_schema=ChunkToolArgs,
+            ),
+            StructuredTool.from_function(
+                chunk_and_enrich_current_batch,
+                name="chunk_and_enrich_current_batch",
+                description=(
+                    "Run HSC-RAG chunking for all governed documents, then enrich every chunk with "
+                    "LLM semantic organization metadata."
+                ),
                 args_schema=ChunkToolArgs,
             ),
         ]
@@ -185,9 +282,12 @@ class _LangChainRuntime:
                 "inspect_hsc_rag_context",
                 "chunk_current_document",
                 "chunk_current_batch",
+                "chunk_and_enrich_current_document",
+                "chunk_and_enrich_current_batch",
             ],
             "core_method": "deterministic hierarchical structure-aware chunking",
-            "langchain_role": "tool orchestration and agent interface",
+            "llm_semantic_role": "post-chunk summary, topic tags, entity tags, semantic integrity scoring",
+            "langchain_role": "tool orchestration, optional LLM semantic organization, and agent interface",
         }
 
     def _record_tool_result(self, tool_name: str, args: dict[str, Any], payload: dict[str, Any]) -> str:
@@ -212,6 +312,66 @@ class _LangChainRuntime:
             return self.request.include_report
         return include_report
 
+    def _enrich_chunks(self, chunks):
+        enricher = ChunkSemanticEnricher(
+            provider=self._build_enrichment_provider(),
+            config=ChunkEnrichmentConfig(include_qa=_wants_qa_generation(self.request.instruction)),
+        )
+        return [enricher.enrich_chunk(chunk) for chunk in chunks]
+
+    def _build_enrichment_provider(self):
+        base_url = self.request.llm_base_url
+        if self.request.llm_provider == "openai_compatible" and not base_url:
+            base_url = "https://api.openai.com/v1"
+        return build_json_provider(
+            provider=self.request.llm_provider,
+            model=self.request.llm_model or self._default_enrichment_model(),
+            base_url=base_url,
+            api_key_env=self.request.llm_api_key_env,
+            temperature=self.request.llm_temperature,
+            timeout_seconds=self.request.llm_timeout_seconds,
+            use_response_format=self.request.llm_use_response_format,
+            fallback_on_error=True,
+        )
+
+    def _default_enrichment_model(self) -> str:
+        if self.request.llm_provider == "mock":
+            return "mock-semantic-organizer-v1"
+        return "gpt-4.1-mini"
+
+    def _llm_report(self, chunks) -> dict[str, Any]:
+        enrichments = [
+            (chunk.metadata or {}).get("llm_enrichment", {})
+            for chunk in chunks
+            if isinstance((chunk.metadata or {}).get("llm_enrichment"), dict)
+        ]
+        if not enrichments:
+            return {"chunks": 0}
+
+        def avg(key: str) -> float:
+            values = [float(item[key]) for item in enrichments if isinstance(item.get(key), (int, float))]
+            return round(sum(values) / len(values), 4) if values else 0.0
+
+        risk_counts: dict[str, int] = {}
+        provider_execution_counts: dict[str, int] = {}
+        for item in enrichments:
+            risk = str(item.get("faithfulness_risk", "unknown"))
+            provider_execution = str(item.get("provider_execution", "unknown"))
+            risk_counts[risk] = risk_counts.get(risk, 0) + 1
+            provider_execution_counts[provider_execution] = provider_execution_counts.get(provider_execution, 0) + 1
+        return {
+            "skill": "llm_semantic_organization",
+            "chunks": len(enrichments),
+            "provider": self.request.llm_provider,
+            "model": self.request.llm_model or self._default_enrichment_model(),
+            "semantic_integrity_score_avg": avg("semantic_integrity_score"),
+            "summary_faithfulness_score_avg": avg("summary_faithfulness_score"),
+            "tag_accuracy_score_avg": avg("tag_accuracy_score"),
+            "faithfulness_risk_counts": dict(sorted(risk_counts.items())),
+            "provider_execution_counts": dict(sorted(provider_execution_counts.items())),
+            "prompt_version": enrichments[0].get("prompt_version"),
+        }
+
 
 def run_langchain_agent(request: LangChainAgentRequest) -> LangChainAgentResponse:
     """Run the HSC-RAG LangChain agent with offline mock or remote LLM routing."""
@@ -222,10 +382,16 @@ def run_langchain_agent(request: LangChainAgentRequest) -> LangChainAgentRespons
     selected_tool: str | None = None
     answer = ""
 
-    if request.llm_provider == "mock":
+    if request.preferred_tool:
         selected_tool = _select_tool(request, len(runtime.documents))
         runtime.invoke_tool(selected_tool, tools)
-        answer = _mock_answer(selected_tool, runtime.last_result)
+        answer = _tool_answer(selected_tool, runtime.last_result)
+        if request.llm_provider == "mock":
+            warnings.append("mock provider used: LangChain tools were invoked without an external LLM call.")
+    elif request.llm_provider == "mock":
+        selected_tool = _select_tool(request, len(runtime.documents))
+        runtime.invoke_tool(selected_tool, tools)
+        answer = _tool_answer(selected_tool, runtime.last_result)
         warnings.append("mock provider used: LangChain tools were invoked without an external LLM call.")
     else:
         selected_tool, answer = _run_remote_langchain_agent(request, runtime, tools, warnings)
@@ -241,7 +407,7 @@ def run_langchain_agent(request: LangChainAgentRequest) -> LangChainAgentRespons
         langchain_version=getattr(langchain, "__version__", None) if langchain is not None else None,
         instruction=request.instruction,
         selected_tool=selected_tool,
-        answer=answer or _mock_answer(selected_tool or "inspect_hsc_rag_context", runtime.last_result),
+        answer=answer or _tool_answer(selected_tool or "inspect_hsc_rag_context", runtime.last_result),
         tool_trace=runtime.trace,
         result=runtime.last_result,
         warnings=warnings,
@@ -318,7 +484,13 @@ def _collect_documents(request: LangChainAgentRequest) -> list[GovernedDocument]
 
 
 def _select_tool(request: LangChainAgentRequest, document_count: int) -> str:
-    allowed = {"inspect_hsc_rag_context", "chunk_current_document", "chunk_current_batch"}
+    allowed = {
+        "inspect_hsc_rag_context",
+        "chunk_current_document",
+        "chunk_current_batch",
+        "chunk_and_enrich_current_document",
+        "chunk_and_enrich_current_batch",
+    }
     if request.preferred_tool:
         if request.preferred_tool not in allowed:
             raise HTTPException(
@@ -328,21 +500,38 @@ def _select_tool(request: LangChainAgentRequest, document_count: int) -> str:
         return request.preferred_tool
     if document_count == 0:
         return "inspect_hsc_rag_context"
+    if _wants_llm_enrichment(request.instruction):
+        if document_count == 1:
+            return "chunk_and_enrich_current_document"
+        return "chunk_and_enrich_current_batch"
     if document_count == 1:
         return "chunk_current_document"
     return "chunk_current_batch"
 
 
-def _mock_answer(tool_name: str, result: dict[str, Any]) -> str:
+def _tool_answer(tool_name: str, result: dict[str, Any]) -> str:
     if tool_name == "inspect_hsc_rag_context":
-        return "LangChain mock agent inspected the HSC-RAG context and available tools."
+        return "LangChain agent inspected the HSC-RAG context and available tools."
     if tool_name == "chunk_current_document":
         return (
-            "LangChain mock agent invoked the HSC-RAG chunking tool for one governed document "
+            "LangChain agent invoked the HSC-RAG chunking tool for one governed document "
             f"and produced {result.get('chunk_count', 0)} chunks."
         )
+    if tool_name == "chunk_and_enrich_current_document":
+        llm_report = result.get("report", {}).get("llm_semantic_organization", {})
+        return (
+            "LangChain agent invoked HSC-RAG chunking and the LLM semantic organization "
+            f"tool for one governed document, producing {result.get('chunk_count', 0)} chunks "
+            f"with {llm_report.get('chunks', 0)} enriched chunks."
+        )
+    if tool_name == "chunk_and_enrich_current_batch":
+        return (
+            "LangChain agent invoked HSC-RAG batch chunking and LLM semantic organization "
+            f"for {result.get('document_count', 0)} documents and produced "
+            f"{result.get('total_chunks', 0)} chunks."
+        )
     return (
-        "LangChain mock agent invoked the HSC-RAG batch chunking tool "
+        "LangChain agent invoked the HSC-RAG batch chunking tool "
         f"for {result.get('document_count', 0)} documents and produced {result.get('total_chunks', 0)} chunks."
     )
 
@@ -377,6 +566,7 @@ def _compact_result(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def _chunk_preview(chunk: dict[str, Any]) -> dict[str, Any]:
+    enrichment = (chunk.get("metadata") or {}).get("llm_enrichment") or {}
     return {
         "chunk_id": chunk.get("chunk_id"),
         "token_count": chunk.get("token_count"),
@@ -384,7 +574,45 @@ def _chunk_preview(chunk: dict[str, Any]) -> dict[str, Any]:
         "source_blocks": chunk.get("source_blocks", [])[:5],
         "quality_flags": chunk.get("quality_flags", []),
         "summary": chunk.get("summary"),
+        "boundary_decision": (chunk.get("metadata") or {}).get("closing_boundary_decision"),
+        "llm_enrichment": {
+            "summary": enrichment.get("summary"),
+            "topic_tags": enrichment.get("topic_tags", [])[:4],
+            "semantic_integrity_score": enrichment.get("semantic_integrity_score"),
+            "summary_faithfulness_score": enrichment.get("summary_faithfulness_score"),
+            "provider_execution": enrichment.get("provider_execution"),
+        }
+        if enrichment
+        else None,
     }
+
+
+def _wants_llm_enrichment(instruction: str) -> bool:
+    text = instruction.lower()
+    keywords = [
+        "llm",
+        "large model",
+        "semantic organization",
+        "semantic enrichment",
+        "summary",
+        "summarize",
+        "tag",
+        "entity",
+        "qa",
+        "大模型",
+        "语义组织",
+        "语义增强",
+        "摘要",
+        "标签",
+        "实体",
+        "问答",
+    ]
+    return any(keyword in text for keyword in keywords)
+
+
+def _wants_qa_generation(instruction: str) -> bool:
+    text = instruction.lower()
+    return any(keyword in text for keyword in ["qa", "question", "instruction data", "问答", "指令数据"])
 
 
 def _ensure_tooling_available() -> None:
