@@ -1,6 +1,6 @@
 fastapi
-uvicorn
-pydantic
+uvicorn[standard]
+pydantic>=2,<3
 rank-bm25
 faiss-cpu
 scikit-learn
@@ -9,6 +9,8 @@ numpy
 pandas
 sentence-transformers
 langchain>=1.3,<2
+langchain-core>=1.3,<2
 langchain-openai>=1.3,<2
 langgraph>=1.2,<2
+httpx
 pytest
