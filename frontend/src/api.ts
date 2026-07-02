@@ -6,12 +6,107 @@ export const retrievers: Retriever[] = ['bm25', 'dense', 'hybrid'];
 
 const API_BASE = import.meta.env.VITE_API_BASE || '';
 
-async function request<T>(path: string): Promise<T> {
-  const response = await fetch(`${API_BASE}${path}`);
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`${API_BASE}${path}`, init);
   if (!response.ok) {
-    throw new Error(`${response.status} ${response.statusText}`);
+    let detail = `${response.status} ${response.statusText}`;
+    try {
+      const payload = await response.json();
+      detail = typeof payload?.detail === 'string' ? payload.detail : JSON.stringify(payload?.detail ?? payload);
+    } catch {
+      // Keep the HTTP status text if the server did not return JSON.
+    }
+    throw new Error(detail);
   }
   return response.json() as Promise<T>;
+}
+
+export interface SourceAnchor {
+  dataset: string;
+  split?: string | null;
+  source_doc_id: string;
+  section_name?: string | null;
+  paragraph_index?: number | null;
+  asset_file?: string | null;
+  extra?: Record<string, unknown>;
+}
+
+export interface GovernedBlock {
+  block_id: string;
+  doc_id: string;
+  type: string;
+  text: string;
+  order: number;
+  level?: number;
+  title_path?: string[];
+  source_anchor: SourceAnchor;
+  parent_heading_id?: string | null;
+  entity_tags?: string[];
+  metadata?: Record<string, unknown>;
+}
+
+export interface GovernedDocument {
+  doc_id: string;
+  dataset: string;
+  split: string;
+  source_doc_id: string;
+  title: string;
+  abstract?: string | null;
+  normalization_status: string;
+  term_policy?: string;
+  governance_stage?: string;
+  schema_version?: string;
+  blocks: GovernedBlock[];
+  queries?: unknown[];
+  source_ref?: Record<string, unknown>;
+  conversion_warnings?: string[];
+  metadata?: Record<string, unknown>;
+  created_at?: string;
+}
+
+export interface ChunkAgentRequest {
+  document: GovernedDocument;
+  strategy?: Strategy;
+  config?: Record<string, unknown>;
+  include_report?: boolean;
+}
+
+export interface ChunkSourceAnchor {
+  dataset: string;
+  split?: string | null;
+  source_doc_id: string;
+  sections: string[];
+  first_block_id?: string | null;
+  last_block_id?: string | null;
+  block_count: number;
+  assets: string[];
+}
+
+export interface RagChunk {
+  chunk_id: string;
+  doc_id: string;
+  dataset: string;
+  split: string;
+  strategy: Strategy;
+  text: string;
+  token_count: number;
+  title_path: string[];
+  source_blocks: string[];
+  source_anchor: ChunkSourceAnchor;
+  tags: string[];
+  summary: string | null;
+  entity_tags: string[];
+  quality_flags: string[];
+  metadata: Record<string, any>;
+}
+
+export interface ChunkAgentResponse {
+  agent: string;
+  strategy: Strategy;
+  doc_id: string;
+  chunks: RagChunk[];
+  chunk_count: number;
+  report: Record<string, any>;
 }
 
 export interface MetricRow {
@@ -126,3 +221,12 @@ export function getComparison(queryId: string, retriever: Retriever) {
   return request<QueryComparison>(`/api/queries/${encodeURIComponent(queryId)}/comparison?retriever=${retriever}`);
 }
 
+export function postChunk(payload: ChunkAgentRequest) {
+  return request<ChunkAgentResponse>('/api/v1/chunk', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8'
+    },
+    body: JSON.stringify(payload)
+  });
+}

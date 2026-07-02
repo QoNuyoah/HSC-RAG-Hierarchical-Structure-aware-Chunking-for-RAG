@@ -6,7 +6,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from app.retrievers.bm25 import BM25ChunkRetriever
+from app.retrievers.bm25 import BM25ChunkRetriever, TokenizerProfile
 from app.retrievers.dense_faiss import DenseFaissRetriever
 
 
@@ -53,12 +53,18 @@ class HybridRetriever:
         dense_model_name: str = "sentence-transformers/all-MiniLM-L6-v2",
         dense_svd_dim: int = 128,
         local_files_only: bool = True,
+        tokenizer_profile: TokenizerProfile = "mixed",
     ):
         if not 0 <= alpha <= 1:
             raise ValueError("alpha must be in [0, 1]")
         self.chunks = chunks
         self.alpha = alpha
-        self.bm25 = BM25ChunkRetriever(chunks, include_metadata=include_metadata)
+        self.tokenizer_profile = tokenizer_profile
+        self.bm25 = BM25ChunkRetriever(
+            chunks,
+            include_metadata=include_metadata,
+            tokenizer_profile=tokenizer_profile,
+        )
         self.dense = DenseFaissRetriever(
             chunks,
             encoder=dense_encoder,
@@ -66,6 +72,7 @@ class HybridRetriever:
             include_metadata=include_metadata,
             svd_dim=dense_svd_dim,
             local_files_only=local_files_only,
+            tokenizer_profile=tokenizer_profile,
         )
 
     def candidate_chunks(self, doc_id: str | None = None) -> list[dict[str, Any]]:
@@ -111,6 +118,7 @@ class HybridRetriever:
     def config(self) -> dict[str, Any]:
         return {
             "alpha_bm25": self.alpha,
+            "tokenizer_profile": self.tokenizer_profile,
             "dense": self.dense.config(),
         }
 
@@ -123,4 +131,3 @@ class HybridRetriever:
         if high == low:
             return {key: 0.0 for key in scores}
         return {key: (value - low) / (high - low) for key, value in scores.items()}
-

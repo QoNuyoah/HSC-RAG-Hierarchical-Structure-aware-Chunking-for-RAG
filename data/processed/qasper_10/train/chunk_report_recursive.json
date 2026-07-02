@@ -1,0 +1,37 @@
+{
+  "strategy": "recursive",
+  "input_path": "data\\processed\\qasper_10\\train\\governed_documents.jsonl",
+  "output_path": "data\\processed\\qasper_10\\train\\chunks_recursive.jsonl",
+  "documents": 10,
+  "chunks": 103,
+  "total_tokens": 46058,
+  "avg_tokens": 447.17,
+  "min_tokens": 107,
+  "max_tokens": 511,
+  "quality_flag_counts": {
+    "length_ok": 102,
+    "mixed_title_paths": 62,
+    "protected_block_intact": 12,
+    "recursive_baseline": 103,
+    "short_chunk": 1,
+    "source_anchor_complete": 103,
+    "title_path_consistent": 26
+  },
+  "boundary_score_summary": {},
+  "config": {
+    "target_tokens": 512,
+    "overlap_tokens": 64,
+    "min_tokens": 128,
+    "max_tokens": 512,
+    "include_title_context": false,
+    "separators": [
+      "\n\n",
+      "\n",
+      ". ",
+      "; ",
+      ", ",
+      " "
+    ]
+  },
+  "warnings": []
+}

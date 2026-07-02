@@ -22,6 +22,12 @@ from app.retrievers.hybrid import HybridRetriever  # noqa: E402
 
 
 DEFAULT_DATA_DIR = PROJECT_ROOT / "data" / "processed" / "qasper" / "train"
+RETRIEVAL_PROFILES: dict[str, dict[str, Any]] = {
+    "default": {},
+    "zh_cjk": {
+        "tokenizer_profile": "cjk_2_4gram",
+    },
+}
 
 
 def display_path(path: Path) -> str:
@@ -92,6 +98,15 @@ def parse_args() -> argparse.Namespace:
         help="Index chunk title_path/tags/summary in addition to chunk text.",
     )
     parser.add_argument(
+        "--retrieval-profile",
+        default="default",
+        choices=sorted(RETRIEVAL_PROFILES),
+        help=(
+            "Named retrieval preset. zh_cjk only switches tokenization to "
+            "Chinese 2-4 character n-grams; it does not tune ranking parameters."
+        ),
+    )
+    parser.add_argument(
         "--dense-encoder",
         default="tfidf_svd",
         choices=["tfidf_svd", "sentence_transformer", "auto"],
@@ -105,11 +120,39 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--dense-svd-dim", type=int, default=128)
     parser.add_argument("--hybrid-alpha", type=float, default=0.55, help="BM25 weight in hybrid fusion.")
     parser.add_argument(
+        "--tokenizer-profile",
+        default="mixed",
+        choices=["mixed", "cjk_bigram", "cjk_2_4gram", "jieba"],
+        help=(
+            "Tokenizer profile for BM25 and TF-IDF dense fallback. "
+            "Use cjk_bigram, cjk_2_4gram, or jieba for Chinese text retrieval experiments."
+        ),
+    )
+    parser.add_argument(
         "--allow-model-download",
         action="store_true",
         help="Allow SentenceTransformer to look beyond the local HuggingFace cache.",
     )
     return parser.parse_args()
+
+
+def apply_retrieval_profile(args: argparse.Namespace) -> argparse.Namespace:
+    profile = RETRIEVAL_PROFILES[args.retrieval_profile]
+    if not profile:
+        return args
+
+    parser_defaults = {
+        "tokenizer_profile": "mixed",
+        "retrievers": "bm25,dense,hybrid",
+        "dense_encoder": "tfidf_svd",
+        "dense_svd_dim": 128,
+        "hybrid_alpha": 0.55,
+        "include_metadata": False,
+    }
+    for key, value in profile.items():
+        if getattr(args, key) == parser_defaults[key]:
+            setattr(args, key, value)
+    return args
 
 
 def parse_csv_list(raw: str) -> list[str]:
@@ -181,9 +224,14 @@ def build_retriever(
     dense_svd_dim: int,
     hybrid_alpha: float,
     local_files_only: bool,
+    tokenizer_profile: str,
 ):
     if retriever_name == "bm25":
-        return BM25ChunkRetriever(chunks, include_metadata=include_metadata)
+        return BM25ChunkRetriever(
+            chunks,
+            include_metadata=include_metadata,
+            tokenizer_profile=tokenizer_profile,  # type: ignore[arg-type]
+        )
     if retriever_name == "dense":
         return DenseFaissRetriever(
             chunks,
@@ -192,6 +240,7 @@ def build_retriever(
             include_metadata=include_metadata,
             svd_dim=dense_svd_dim,
             local_files_only=local_files_only,
+            tokenizer_profile=tokenizer_profile,  # type: ignore[arg-type]
         )
     if retriever_name == "hybrid":
         return HybridRetriever(
@@ -202,6 +251,7 @@ def build_retriever(
             dense_model_name=dense_model,
             dense_svd_dim=dense_svd_dim,
             local_files_only=local_files_only,
+            tokenizer_profile=tokenizer_profile,  # type: ignore[arg-type]
         )
     raise ValueError(f"Unknown retriever: {retriever_name}")
 
@@ -397,7 +447,7 @@ def best_by_metric(reports: list[dict[str, Any]]) -> dict[str, list[dict[str, An
 
 
 def main() -> None:
-    args = parse_args()
+    args = apply_retrieval_profile(parse_args())
     chunk_dir = Path(args.chunk_dir)
     output_dir = Path(args.output_dir) if args.output_dir else chunk_dir
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -424,6 +474,7 @@ def main() -> None:
                 dense_svd_dim=args.dense_svd_dim,
                 hybrid_alpha=args.hybrid_alpha,
                 local_files_only=local_files_only,
+                tokenizer_profile=args.tokenizer_profile,
             )
             reports.append(
                 evaluate_pair(
@@ -444,6 +495,7 @@ def main() -> None:
     summary = {
         "gold_evidence_path": display_path(Path(args.gold_evidence)),
         "output_dir": display_path(output_dir),
+        "retrieval_profile": args.retrieval_profile,
         "strategies": strategies,
         "retrievers": retriever_names,
         "reports": reports,

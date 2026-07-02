@@ -17,6 +17,7 @@
     "source_anchor_complete": 52,
     "title_path_consistent": 7
   },
+  "boundary_score_summary": {},
   "config": {
     "target_tokens": 512,
     "overlap_tokens": 64,

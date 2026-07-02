@@ -1,0 +1,28 @@
+{
+  "strategy": "fixed",
+  "input_path": "data\\processed\\qasper_10\\train\\governed_documents.jsonl",
+  "output_path": "data\\processed\\qasper_10\\adaptive_default\\chunks_fixed.jsonl",
+  "documents": 10,
+  "chunks": 99,
+  "total_tokens": 44271,
+  "avg_tokens": 447.18,
+  "min_tokens": 146,
+  "max_tokens": 511,
+  "quality_flag_counts": {
+    "fixed_window_baseline": 99,
+    "length_ok": 99,
+    "mixed_title_paths": 59,
+    "protected_block_intact": 10,
+    "source_anchor_complete": 99,
+    "title_path_consistent": 25
+  },
+  "boundary_score_summary": {},
+  "config": {
+    "target_tokens": 512,
+    "overlap_tokens": 64,
+    "min_tokens": 128,
+    "max_tokens": 512,
+    "include_title_context": false
+  },
+  "warnings": []
+}

@@ -19,6 +19,7 @@
     "source_anchor_complete": 101,
     "title_path_consistent": 45
   },
+  "boundary_score_summary": {},
   "config": {
     "min_tokens": 160,
     "target_tokens": 512,

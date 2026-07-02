@@ -63,6 +63,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--hsc-soft-boundary-threshold", type=float, default=0.52)
     parser.add_argument("--hsc-semantic-distance-threshold", type=float, default=0.72)
     parser.add_argument("--hsc-semantic-window-blocks", type=int, default=3)
+    parser.add_argument(
+        "--hsc-adaptive-boundary",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "Enable document-statistics adaptive HSC boundary thresholds. "
+            "Use --no-hsc-adaptive-boundary for fixed threshold experiments."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -167,6 +176,7 @@ def run_strategy(strategy: str, docs, args: argparse.Namespace) -> tuple[list[Ra
             semantic_soft_boundary_threshold=args.hsc_soft_boundary_threshold,
             semantic_distance_threshold=args.hsc_semantic_distance_threshold,
             semantic_window_blocks=args.hsc_semantic_window_blocks,
+            adaptive_boundary=args.hsc_adaptive_boundary,
         )
         chunker = HscRagChunker(config)
         config_dict = config.__dict__

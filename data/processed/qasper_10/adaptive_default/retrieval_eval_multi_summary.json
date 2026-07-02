@@ -1,0 +1,510 @@
+{
+  "gold_evidence_path": "data\\processed\\qasper_10\\train\\gold_evidence.jsonl",
+  "output_dir": "data\\processed\\qasper_10\\adaptive_default",
+  "retrieval_profile": "default",
+  "strategies": [
+    "fixed",
+    "hsc_rag"
+  ],
+  "retrievers": [
+    "bm25",
+    "dense",
+    "hybrid"
+  ],
+  "reports": [
+    {
+      "strategy": "fixed",
+      "retriever": "bm25",
+      "chunks_path": "data\\processed\\qasper_10\\adaptive_default\\chunks_fixed.jsonl",
+      "results_path": "data\\processed\\qasper_10\\adaptive_default\\retrieval_results_fixed_bm25.jsonl",
+      "chunks": 99,
+      "queries_total_in_gold_file": 51,
+      "queries_evaluated": 40,
+      "queries_skipped": {
+        "unanswerable": 10,
+        "no_gold_blocks": 1
+      },
+      "search_scope": "same_doc",
+      "index_fields": [
+        "text"
+      ],
+      "retriever_config": {
+        "retriever": "bm25",
+        "include_metadata": false,
+        "tokenizer_profile": "mixed"
+      },
+      "metric_definitions": {
+        "recall@k": "Mean block-level evidence recall: covered gold_block_ids in top-k chunks divided by all gold_block_ids.",
+        "hit_rate@k": "Mean query-level hit rate: at least one gold evidence block appears in top-k chunks.",
+        "full_recall_rate@k": "Mean query-level complete evidence coverage: all gold evidence blocks appear in top-k chunks.",
+        "mrr": "Mean reciprocal rank of the first chunk containing any gold evidence block.",
+        "ndcg@5": "Binary chunk-relevance nDCG: a chunk is relevant if it contains at least one gold evidence block."
+      },
+      "metrics": {
+        "recall@1": 0.19375,
+        "hit_rate@1": 0.3,
+        "full_recall_rate@1": 0.1,
+        "recall@3": 0.439583,
+        "hit_rate@3": 0.5,
+        "full_recall_rate@3": 0.35,
+        "recall@5": 0.68125,
+        "hit_rate@5": 0.725,
+        "full_recall_rate@5": 0.625,
+        "mrr": 0.479555,
+        "ndcg@5": 0.475324,
+        "avg_gold_blocks_per_query": 1.725
+      }
+    },
+    {
+      "strategy": "fixed",
+      "retriever": "dense",
+      "chunks_path": "data\\processed\\qasper_10\\adaptive_default\\chunks_fixed.jsonl",
+      "results_path": "data\\processed\\qasper_10\\adaptive_default\\retrieval_results_fixed_dense.jsonl",
+      "chunks": 99,
+      "queries_total_in_gold_file": 51,
+      "queries_evaluated": 40,
+      "queries_skipped": {
+        "unanswerable": 10,
+        "no_gold_blocks": 1
+      },
+      "search_scope": "same_doc",
+      "index_fields": [
+        "text"
+      ],
+      "retriever_config": {
+        "retriever": "dense",
+        "encoder_request": "tfidf_svd",
+        "encoder_name": "tfidf_svd",
+        "model_name": null,
+        "include_metadata": false,
+        "svd_dim": 128,
+        "local_files_only": true,
+        "tokenizer_profile": "mixed",
+        "warning": null,
+        "faiss_index": "IndexFlatIP",
+        "embedding_dim": 98
+      },
+      "metric_definitions": {
+        "recall@k": "Mean block-level evidence recall: covered gold_block_ids in top-k chunks divided by all gold_block_ids.",
+        "hit_rate@k": "Mean query-level hit rate: at least one gold evidence block appears in top-k chunks.",
+        "full_recall_rate@k": "Mean query-level complete evidence coverage: all gold evidence blocks appear in top-k chunks.",
+        "mrr": "Mean reciprocal rank of the first chunk containing any gold evidence block.",
+        "ndcg@5": "Binary chunk-relevance nDCG: a chunk is relevant if it contains at least one gold evidence block."
+      },
+      "metrics": {
+        "recall@1": 0.20625,
+        "hit_rate@1": 0.325,
+        "full_recall_rate@1": 0.1,
+        "recall@3": 0.497917,
+        "hit_rate@3": 0.575,
+        "full_recall_rate@3": 0.4,
+        "recall@5": 0.664583,
+        "hit_rate@5": 0.725,
+        "full_recall_rate@5": 0.575,
+        "mrr": 0.504665,
+        "ndcg@5": 0.479096,
+        "avg_gold_blocks_per_query": 1.725
+      }
+    },
+    {
+      "strategy": "fixed",
+      "retriever": "hybrid",
+      "chunks_path": "data\\processed\\qasper_10\\adaptive_default\\chunks_fixed.jsonl",
+      "results_path": "data\\processed\\qasper_10\\adaptive_default\\retrieval_results_fixed_hybrid.jsonl",
+      "chunks": 99,
+      "queries_total_in_gold_file": 51,
+      "queries_evaluated": 40,
+      "queries_skipped": {
+        "unanswerable": 10,
+        "no_gold_blocks": 1
+      },
+      "search_scope": "same_doc",
+      "index_fields": [
+        "text"
+      ],
+      "retriever_config": {
+        "retriever": "hybrid",
+        "alpha_bm25": 0.55,
+        "tokenizer_profile": "mixed",
+        "dense": {
+          "encoder_request": "tfidf_svd",
+          "encoder_name": "tfidf_svd",
+          "model_name": null,
+          "include_metadata": false,
+          "svd_dim": 128,
+          "local_files_only": true,
+          "tokenizer_profile": "mixed",
+          "warning": null,
+          "faiss_index": "IndexFlatIP",
+          "embedding_dim": 98
+        }
+      },
+      "metric_definitions": {
+        "recall@k": "Mean block-level evidence recall: covered gold_block_ids in top-k chunks divided by all gold_block_ids.",
+        "hit_rate@k": "Mean query-level hit rate: at least one gold evidence block appears in top-k chunks.",
+        "full_recall_rate@k": "Mean query-level complete evidence coverage: all gold evidence blocks appear in top-k chunks.",
+        "mrr": "Mean reciprocal rank of the first chunk containing any gold evidence block.",
+        "ndcg@5": "Binary chunk-relevance nDCG: a chunk is relevant if it contains at least one gold evidence block."
+      },
+      "metrics": {
+        "recall@1": 0.24375,
+        "hit_rate@1": 0.35,
+        "full_recall_rate@1": 0.15,
+        "recall@3": 0.497917,
+        "hit_rate@3": 0.575,
+        "full_recall_rate@3": 0.4,
+        "recall@5": 0.66875,
+        "hit_rate@5": 0.725,
+        "full_recall_rate@5": 0.6,
+        "mrr": 0.523027,
+        "ndcg@5": 0.499704,
+        "avg_gold_blocks_per_query": 1.725
+      }
+    },
+    {
+      "strategy": "hsc_rag",
+      "retriever": "bm25",
+      "chunks_path": "data\\processed\\qasper_10\\adaptive_default\\chunks_hsc_rag.jsonl",
+      "results_path": "data\\processed\\qasper_10\\adaptive_default\\retrieval_results_hsc_rag_bm25.jsonl",
+      "chunks": 79,
+      "queries_total_in_gold_file": 51,
+      "queries_evaluated": 40,
+      "queries_skipped": {
+        "unanswerable": 10,
+        "no_gold_blocks": 1
+      },
+      "search_scope": "same_doc",
+      "index_fields": [
+        "text"
+      ],
+      "retriever_config": {
+        "retriever": "bm25",
+        "include_metadata": false,
+        "tokenizer_profile": "mixed"
+      },
+      "metric_definitions": {
+        "recall@k": "Mean block-level evidence recall: covered gold_block_ids in top-k chunks divided by all gold_block_ids.",
+        "hit_rate@k": "Mean query-level hit rate: at least one gold evidence block appears in top-k chunks.",
+        "full_recall_rate@k": "Mean query-level complete evidence coverage: all gold evidence blocks appear in top-k chunks.",
+        "mrr": "Mean reciprocal rank of the first chunk containing any gold evidence block.",
+        "ndcg@5": "Binary chunk-relevance nDCG: a chunk is relevant if it contains at least one gold evidence block."
+      },
+      "metrics": {
+        "recall@1": 0.31875,
+        "hit_rate@1": 0.4,
+        "full_recall_rate@1": 0.225,
+        "recall@3": 0.635417,
+        "hit_rate@3": 0.725,
+        "full_recall_rate@3": 0.55,
+        "recall@5": 0.83125,
+        "hit_rate@5": 0.875,
+        "full_recall_rate@5": 0.775,
+        "mrr": 0.595714,
+        "ndcg@5": 0.612483,
+        "avg_gold_blocks_per_query": 1.725
+      }
+    },
+    {
+      "strategy": "hsc_rag",
+      "retriever": "dense",
+      "chunks_path": "data\\processed\\qasper_10\\adaptive_default\\chunks_hsc_rag.jsonl",
+      "results_path": "data\\processed\\qasper_10\\adaptive_default\\retrieval_results_hsc_rag_dense.jsonl",
+      "chunks": 79,
+      "queries_total_in_gold_file": 51,
+      "queries_evaluated": 40,
+      "queries_skipped": {
+        "unanswerable": 10,
+        "no_gold_blocks": 1
+      },
+      "search_scope": "same_doc",
+      "index_fields": [
+        "text"
+      ],
+      "retriever_config": {
+        "retriever": "dense",
+        "encoder_request": "tfidf_svd",
+        "encoder_name": "tfidf_svd",
+        "model_name": null,
+        "include_metadata": false,
+        "svd_dim": 128,
+        "local_files_only": true,
+        "tokenizer_profile": "mixed",
+        "warning": null,
+        "faiss_index": "IndexFlatIP",
+        "embedding_dim": 78
+      },
+      "metric_definitions": {
+        "recall@k": "Mean block-level evidence recall: covered gold_block_ids in top-k chunks divided by all gold_block_ids.",
+        "hit_rate@k": "Mean query-level hit rate: at least one gold evidence block appears in top-k chunks.",
+        "full_recall_rate@k": "Mean query-level complete evidence coverage: all gold evidence blocks appear in top-k chunks.",
+        "mrr": "Mean reciprocal rank of the first chunk containing any gold evidence block.",
+        "ndcg@5": "Binary chunk-relevance nDCG: a chunk is relevant if it contains at least one gold evidence block."
+      },
+      "metrics": {
+        "recall@1": 0.24375,
+        "hit_rate@1": 0.3,
+        "full_recall_rate@1": 0.175,
+        "recall@3": 0.51875,
+        "hit_rate@3": 0.6,
+        "full_recall_rate@3": 0.425,
+        "recall@5": 0.79375,
+        "hit_rate@5": 0.85,
+        "full_recall_rate@5": 0.725,
+        "mrr": 0.521935,
+        "ndcg@5": 0.554076,
+        "avg_gold_blocks_per_query": 1.725
+      }
+    },
+    {
+      "strategy": "hsc_rag",
+      "retriever": "hybrid",
+      "chunks_path": "data\\processed\\qasper_10\\adaptive_default\\chunks_hsc_rag.jsonl",
+      "results_path": "data\\processed\\qasper_10\\adaptive_default\\retrieval_results_hsc_rag_hybrid.jsonl",
+      "chunks": 79,
+      "queries_total_in_gold_file": 51,
+      "queries_evaluated": 40,
+      "queries_skipped": {
+        "unanswerable": 10,
+        "no_gold_blocks": 1
+      },
+      "search_scope": "same_doc",
+      "index_fields": [
+        "text"
+      ],
+      "retriever_config": {
+        "retriever": "hybrid",
+        "alpha_bm25": 0.55,
+        "tokenizer_profile": "mixed",
+        "dense": {
+          "encoder_request": "tfidf_svd",
+          "encoder_name": "tfidf_svd",
+          "model_name": null,
+          "include_metadata": false,
+          "svd_dim": 128,
+          "local_files_only": true,
+          "tokenizer_profile": "mixed",
+          "warning": null,
+          "faiss_index": "IndexFlatIP",
+          "embedding_dim": 78
+        }
+      },
+      "metric_definitions": {
+        "recall@k": "Mean block-level evidence recall: covered gold_block_ids in top-k chunks divided by all gold_block_ids.",
+        "hit_rate@k": "Mean query-level hit rate: at least one gold evidence block appears in top-k chunks.",
+        "full_recall_rate@k": "Mean query-level complete evidence coverage: all gold evidence blocks appear in top-k chunks.",
+        "mrr": "Mean reciprocal rank of the first chunk containing any gold evidence block.",
+        "ndcg@5": "Binary chunk-relevance nDCG: a chunk is relevant if it contains at least one gold evidence block."
+      },
+      "metrics": {
+        "recall@1": 0.29375,
+        "hit_rate@1": 0.35,
+        "full_recall_rate@1": 0.225,
+        "recall@3": 0.610417,
+        "hit_rate@3": 0.7,
+        "full_recall_rate@3": 0.525,
+        "recall@5": 0.79375,
+        "hit_rate@5": 0.825,
+        "full_recall_rate@5": 0.75,
+        "mrr": 0.567381,
+        "ndcg@5": 0.585579,
+        "avg_gold_blocks_per_query": 1.725
+      }
+    }
+  ],
+  "comparisons_against_fixed": [
+    {
+      "retriever": "bm25",
+      "baseline": "fixed",
+      "target": "hsc_rag",
+      "delta_target_minus_baseline": {
+        "recall@1": 0.125,
+        "hit_rate@1": 0.1,
+        "full_recall_rate@1": 0.125,
+        "recall@3": 0.195834,
+        "hit_rate@3": 0.225,
+        "full_recall_rate@3": 0.2,
+        "recall@5": 0.15,
+        "hit_rate@5": 0.15,
+        "full_recall_rate@5": 0.15,
+        "mrr": 0.116159,
+        "ndcg@5": 0.137159,
+        "avg_gold_blocks_per_query": 0.0
+      }
+    },
+    {
+      "retriever": "dense",
+      "baseline": "fixed",
+      "target": "hsc_rag",
+      "delta_target_minus_baseline": {
+        "recall@1": 0.0375,
+        "hit_rate@1": -0.025,
+        "full_recall_rate@1": 0.075,
+        "recall@3": 0.020833,
+        "hit_rate@3": 0.025,
+        "full_recall_rate@3": 0.025,
+        "recall@5": 0.129167,
+        "hit_rate@5": 0.125,
+        "full_recall_rate@5": 0.15,
+        "mrr": 0.01727,
+        "ndcg@5": 0.07498,
+        "avg_gold_blocks_per_query": 0.0
+      }
+    },
+    {
+      "retriever": "hybrid",
+      "baseline": "fixed",
+      "target": "hsc_rag",
+      "delta_target_minus_baseline": {
+        "recall@1": 0.05,
+        "hit_rate@1": 0.0,
+        "full_recall_rate@1": 0.075,
+        "recall@3": 0.1125,
+        "hit_rate@3": 0.125,
+        "full_recall_rate@3": 0.125,
+        "recall@5": 0.125,
+        "hit_rate@5": 0.1,
+        "full_recall_rate@5": 0.15,
+        "mrr": 0.044354,
+        "ndcg@5": 0.085875,
+        "avg_gold_blocks_per_query": 0.0
+      }
+    }
+  ],
+  "best_by_metric": {
+    "recall@1": [
+      {
+        "strategy": "hsc_rag",
+        "retriever": "bm25",
+        "value": 0.31875
+      },
+      {
+        "strategy": "hsc_rag",
+        "retriever": "hybrid",
+        "value": 0.29375
+      },
+      {
+        "strategy": "fixed",
+        "retriever": "hybrid",
+        "value": 0.24375
+      },
+      {
+        "strategy": "hsc_rag",
+        "retriever": "dense",
+        "value": 0.24375
+      },
+      {
+        "strategy": "fixed",
+        "retriever": "dense",
+        "value": 0.20625
+      }
+    ],
+    "recall@3": [
+      {
+        "strategy": "hsc_rag",
+        "retriever": "bm25",
+        "value": 0.635417
+      },
+      {
+        "strategy": "hsc_rag",
+        "retriever": "hybrid",
+        "value": 0.610417
+      },
+      {
+        "strategy": "hsc_rag",
+        "retriever": "dense",
+        "value": 0.51875
+      },
+      {
+        "strategy": "fixed",
+        "retriever": "dense",
+        "value": 0.497917
+      },
+      {
+        "strategy": "fixed",
+        "retriever": "hybrid",
+        "value": 0.497917
+      }
+    ],
+    "recall@5": [
+      {
+        "strategy": "hsc_rag",
+        "retriever": "bm25",
+        "value": 0.83125
+      },
+      {
+        "strategy": "hsc_rag",
+        "retriever": "dense",
+        "value": 0.79375
+      },
+      {
+        "strategy": "hsc_rag",
+        "retriever": "hybrid",
+        "value": 0.79375
+      },
+      {
+        "strategy": "fixed",
+        "retriever": "bm25",
+        "value": 0.68125
+      },
+      {
+        "strategy": "fixed",
+        "retriever": "hybrid",
+        "value": 0.66875
+      }
+    ],
+    "mrr": [
+      {
+        "strategy": "hsc_rag",
+        "retriever": "bm25",
+        "value": 0.595714
+      },
+      {
+        "strategy": "hsc_rag",
+        "retriever": "hybrid",
+        "value": 0.567381
+      },
+      {
+        "strategy": "fixed",
+        "retriever": "hybrid",
+        "value": 0.523027
+      },
+      {
+        "strategy": "hsc_rag",
+        "retriever": "dense",
+        "value": 0.521935
+      },
+      {
+        "strategy": "fixed",
+        "retriever": "dense",
+        "value": 0.504665
+      }
+    ],
+    "ndcg@5": [
+      {
+        "strategy": "hsc_rag",
+        "retriever": "bm25",
+        "value": 0.612483
+      },
+      {
+        "strategy": "hsc_rag",
+        "retriever": "hybrid",
+        "value": 0.585579
+      },
+      {
+        "strategy": "hsc_rag",
+        "retriever": "dense",
+        "value": 0.554076
+      },
+      {
+        "strategy": "fixed",
+        "retriever": "hybrid",
+        "value": 0.499704
+      },
+      {
+        "strategy": "fixed",
+        "retriever": "dense",
+        "value": 0.479096
+      }
+    ]
+  }
+}

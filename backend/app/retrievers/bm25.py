@@ -7,7 +7,7 @@ import math
 import re
 from collections import Counter
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal
 
 try:
     from rank_bm25 import BM25Okapi
@@ -18,6 +18,9 @@ except ImportError:  # pragma: no cover - local fallback for portability
 TOKEN_RE = re.compile(
     r"[A-Za-z0-9_]+(?:[-'][A-Za-z0-9_]+)?|[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]"
 )
+CJK_SPAN_RE = re.compile(r"[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]+")
+LATIN_TOKEN_RE = re.compile(r"[A-Za-z0-9_]+(?:[-'][A-Za-z0-9_]+)?")
+TokenizerProfile = Literal["mixed", "cjk_bigram", "cjk_2_4gram", "jieba"]
 
 STOPWORDS = {
     "a",
@@ -50,12 +53,112 @@ STOPWORDS = {
     "with",
 }
 
+CHINESE_STOPWORDS = {
+    "一个",
+    "一种",
+    "一些",
+    "以及",
+    "可以",
+    "我们",
+    "他们",
+    "这个",
+    "这些",
+    "进行",
+    "没有",
+    "不是",
+    "就是",
+    "因为",
+    "所以",
+    "如果",
+    "什么",
+    "怎么",
+    "如何",
+    "哪些",
+    "多少",
+    "为什么",
+}
 
-def tokenize(text: str) -> list[str]:
+
+def tokenize(text: str, profile: TokenizerProfile = "mixed") -> list[str]:
     """Tokenize English-heavy scientific text with light CJK support."""
 
+    if profile == "mixed":
+        return _tokenize_mixed(text)
+    if profile == "cjk_bigram":
+        return _tokenize_cjk_bigram(text)
+    if profile == "cjk_2_4gram":
+        return _tokenize_cjk_2_4gram(text)
+    if profile == "jieba":
+        return _tokenize_jieba(text)
+    raise ValueError(f"Unknown tokenizer profile: {profile}")
+
+
+def _tokenize_mixed(text: str) -> list[str]:
     tokens = [match.group(0).lower() for match in TOKEN_RE.finditer(text or "")]
     return [token for token in tokens if token not in STOPWORDS]
+
+
+def _tokenize_cjk_bigram(text: str) -> list[str]:
+    text = text or ""
+    tokens = [token.lower() for token in LATIN_TOKEN_RE.findall(text)]
+    for span in CJK_SPAN_RE.findall(text):
+        tokens.extend(_cjk_ngrams(span, min_n=2, max_n=3))
+    return _filter_tokens(tokens)
+
+
+def _tokenize_cjk_2_4gram(text: str) -> list[str]:
+    text = text or ""
+    tokens = [token.lower() for token in LATIN_TOKEN_RE.findall(text)]
+    for span in CJK_SPAN_RE.findall(text):
+        tokens.extend(_cjk_ngrams(span, min_n=2, max_n=4))
+    return _filter_tokens(tokens)
+
+
+def _tokenize_jieba(text: str) -> list[str]:
+    text = text or ""
+    try:
+        import jieba
+    except ImportError:  # pragma: no cover - depends on optional runtime package.
+        return _tokenize_cjk_bigram(text)
+
+    tokens: list[str] = []
+    for item in jieba.lcut(text, cut_all=False):
+        item = item.strip().lower()
+        if not item:
+            continue
+        if LATIN_TOKEN_RE.fullmatch(item):
+            tokens.append(item)
+            continue
+        if CJK_SPAN_RE.fullmatch(item):
+            if len(item) >= 2:
+                tokens.append(item)
+            # Add char n-grams for noisy CJK text and short natural-language queries.
+            tokens.extend(_cjk_ngrams(item, min_n=2, max_n=3))
+    return _filter_tokens(tokens)
+
+
+def _cjk_ngrams(text: str, *, min_n: int, max_n: int) -> list[str]:
+    if not text:
+        return []
+    if len(text) < min_n:
+        return [text]
+    result: list[str] = []
+    for n in range(min_n, min(max_n, len(text)) + 1):
+        result.extend(text[index : index + n] for index in range(0, len(text) - n + 1))
+    return result
+
+
+def _filter_tokens(tokens: list[str]) -> list[str]:
+    result: list[str] = []
+    for token in tokens:
+        if not token:
+            continue
+        if token in STOPWORDS or token in CHINESE_STOPWORDS:
+            continue
+        if len(token) == 1 and not CJK_SPAN_RE.fullmatch(token):
+            continue
+        result.append(token)
+    return result
 
 
 class _FallbackBM25:
@@ -123,9 +226,15 @@ class Bm25Hit:
 class BM25ChunkRetriever:
     """BM25 retriever over generated RAG chunks."""
 
-    def __init__(self, chunks: list[dict[str, Any]], include_metadata: bool = False):
+    def __init__(
+        self,
+        chunks: list[dict[str, Any]],
+        include_metadata: bool = False,
+        tokenizer_profile: TokenizerProfile = "mixed",
+    ):
         self.chunks = chunks
         self.include_metadata = include_metadata
+        self.tokenizer_profile = tokenizer_profile
         corpus = [self._tokens_for_chunk(chunk) for chunk in chunks]
         corpus = [tokens if tokens else ["__empty__"] for tokens in corpus]
         if BM25Okapi is not None:
@@ -139,7 +248,7 @@ class BM25ChunkRetriever:
         return [chunk for chunk in self.chunks if chunk.get("doc_id") == doc_id]
 
     def search(self, query: str, top_k: int = 5, doc_id: str | None = None) -> list[Bm25Hit]:
-        query_tokens = tokenize(query)
+        query_tokens = tokenize(query, profile=self.tokenizer_profile)
         if not query_tokens:
             return []
 
@@ -166,7 +275,13 @@ class BM25ChunkRetriever:
             summary = chunk.get("summary")
             if summary:
                 parts.append(summary)
-        return tokenize(" ".join(str(part) for part in parts))
+        return tokenize(" ".join(str(part) for part in parts), profile=self.tokenizer_profile)
+
+    def config(self) -> dict[str, Any]:
+        return {
+            "include_metadata": self.include_metadata,
+            "tokenizer_profile": self.tokenizer_profile,
+        }
 
     def _hit_from_chunk(self, chunk: dict[str, Any], rank: int, score: float) -> Bm25Hit:
         text = " ".join((chunk.get("text") or "").split())
@@ -181,4 +296,3 @@ class BM25ChunkRetriever:
             quality_flags=list(chunk.get("quality_flags") or []),
             preview=text[:240],
         )
-

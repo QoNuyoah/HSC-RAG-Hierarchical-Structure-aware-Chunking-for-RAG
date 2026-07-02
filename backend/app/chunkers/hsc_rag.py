@@ -6,7 +6,8 @@ from __future__ import annotations
 import math
 import re
 from collections import Counter
-from dataclasses import dataclass
+from collections.abc import Iterable
+from dataclasses import dataclass, replace
 from typing import Any
 
 from app.chunkers.common import (
@@ -29,6 +30,7 @@ class HscRagConfig:
     include_title_context: bool = True
     merge_short_chunks: bool = True
     protect_blocks: bool = True
+    adaptive_boundary: bool = True
     semantic_boundary_scoring: bool = True
     semantic_boundary_threshold: float = 0.62
     semantic_soft_boundary_threshold: float = 0.52
@@ -78,15 +80,23 @@ class HscRagChunker:
 
     def chunk_document(self, doc: GovernedDocument) -> list[RagChunk]:
         units = content_blocks(doc)
-        initial = self._build_initial_chunks(doc, units)
-        if self.config.merge_short_chunks:
-            initial = self._merge_short_chunks(initial)
-        return self._renumber(doc, initial)
+        base_config = self.config
+        effective_config, adaptive_metadata = self._adaptive_config_for_document(units)
+        self.config = effective_config
+        try:
+            initial = self._build_initial_chunks(doc, units, adaptive_metadata=adaptive_metadata)
+            if self.config.merge_short_chunks:
+                initial = self._merge_short_chunks(initial)
+            return self._renumber(doc, initial)
+        finally:
+            self.config = base_config
 
     def _build_initial_chunks(
         self,
         doc: GovernedDocument,
         units: list[GovernedBlock],
+        *,
+        adaptive_metadata: dict[str, Any] | None = None,
     ) -> list[RagChunk]:
         chunks: list[RagChunk] = []
         buffer: list[GovernedBlock] = []
@@ -110,7 +120,11 @@ class HscRagChunker:
                 "include_title_context": self.config.include_title_context,
                 "boundary_policy": self._boundary_policy_metadata(),
             }
+            if adaptive_metadata:
+                metadata["adaptive_boundary"] = adaptive_metadata
             flags = list(extra_flags or [])
+            if adaptive_metadata:
+                flags.append("hsc_adaptive_boundary")
             if decision is not None:
                 metadata["closing_boundary_decision"] = decision.as_metadata()
                 flags.append("hsc_boundary_scored")
@@ -160,12 +174,14 @@ class HscRagChunker:
                             "hsc_structure_aware",
                             "protected_block_over_target",
                             "kept_protected_block_intact",
-                        ],
+                        ]
+                        + (["hsc_adaptive_boundary"] if adaptive_metadata else []),
                         metadata={
                             "target_tokens": self.config.target_tokens,
                             "max_tokens": self.config.max_tokens,
                             "boundary_policy": self._boundary_policy_metadata(),
                             "protected_block_type": unit.type,
+                            **({"adaptive_boundary": adaptive_metadata} if adaptive_metadata else {}),
                         },
                     )
                 )
@@ -187,11 +203,13 @@ class HscRagChunker:
                             extra_flags=[
                                 "hsc_structure_aware",
                                 "split_long_text_by_sentence",
-                            ],
+                            ]
+                            + (["hsc_adaptive_boundary"] if adaptive_metadata else []),
                             metadata={
                                 "target_tokens": self.config.target_tokens,
                                 "source_block_token_estimate": unit_tokens,
                                 "boundary_policy": self._boundary_policy_metadata(),
+                                **({"adaptive_boundary": adaptive_metadata} if adaptive_metadata else {}),
                             },
                         )
                     )
@@ -218,6 +236,189 @@ class HscRagChunker:
 
         flush(["final_flush"])
         return chunks
+
+    def _adaptive_config_for_document(
+        self,
+        units: list[GovernedBlock],
+    ) -> tuple[HscRagConfig, dict[str, Any] | None]:
+        if not self.config.adaptive_boundary or not units:
+            return self.config, None
+
+        stats = self._document_boundary_stats(units)
+        effective = self.config
+        profile = "balanced"
+        boundary_strength = "standard"
+        reason = "default_thresholds"
+
+        context_advantage = stats["context_need"] - stats["structure_need"]
+        compact_blocks = stats["avg_block_tokens"] <= self.config.target_tokens * 0.45
+        structure_dominant = (
+            stats["structure_need"] >= 0.62
+            or stats["top_title_transition_rate"] >= 0.20
+            or (
+                stats["title_transition_rate"] >= 0.42
+                and stats["avg_adjacent_semantic_distance"] >= 0.58
+            )
+        )
+
+        if structure_dominant and context_advantage < 0.24:
+            profile = "structure_preserving"
+            boundary_strength = "strong"
+            reason = "structure_transitions_or_semantic_shifts_dominate"
+            effective = replace(
+                self.config,
+                semantic_boundary_threshold=min(self.config.semantic_boundary_threshold, 0.60),
+                semantic_soft_boundary_threshold=min(self.config.semantic_soft_boundary_threshold, 0.50),
+                semantic_distance_threshold=min(self.config.semantic_distance_threshold, 0.70),
+            )
+        elif compact_blocks and context_advantage >= 0.34 and stats["structure_need"] < 0.54:
+            profile = "high_context_coverage"
+            boundary_strength = "loose"
+            reason = "short_cohesive_blocks_need_more_context"
+            effective = replace(
+                self.config,
+                target_tokens=max(
+                    self.config.target_tokens,
+                    min(self.config.max_tokens, int(self.config.target_tokens * 1.40)),
+                ),
+                semantic_boundary_threshold=max(self.config.semantic_boundary_threshold, 0.86),
+                semantic_soft_boundary_threshold=max(self.config.semantic_soft_boundary_threshold, 0.76),
+                semantic_distance_threshold=max(self.config.semantic_distance_threshold, 0.92),
+            )
+        elif context_advantage >= 0.18 and stats["structure_need"] < 0.62:
+            profile = "context_coverage"
+            boundary_strength = "relaxed"
+            reason = "context_pressure_exceeds_structure_pressure"
+            effective = replace(
+                self.config,
+                target_tokens=max(
+                    self.config.target_tokens,
+                    min(self.config.max_tokens, int(self.config.target_tokens * 1.25)),
+                ),
+                semantic_boundary_threshold=max(self.config.semantic_boundary_threshold, 0.76),
+                semantic_soft_boundary_threshold=max(self.config.semantic_soft_boundary_threshold, 0.66),
+                semantic_distance_threshold=max(self.config.semantic_distance_threshold, 0.84),
+            )
+
+        metadata = {
+            "enabled": True,
+            "profile": profile,
+            "boundary_strength": boundary_strength,
+            "method": "document_statistics",
+            "decision_reason": reason,
+            "stats": stats,
+            "decision_basis": {
+                "context_advantage": round(context_advantage, 4),
+                "compact_blocks": compact_blocks,
+                "structure_dominant": structure_dominant,
+                "uses_dataset_name": False,
+                "uses_gold_evidence": False,
+                "uses_query_text": False,
+            },
+            "base_config": self._config_snapshot(self.config),
+            "effective_config": self._config_snapshot(effective),
+        }
+        return effective, metadata
+
+    def _document_boundary_stats(self, units: list[GovernedBlock]) -> dict[str, Any]:
+        token_counts = [
+            estimate_tokens(block_text(unit, include_title_path=self.config.include_title_context))
+            for unit in units
+        ]
+        block_count = len(units)
+        avg_tokens = round(sum(token_counts) / block_count, 4) if block_count else 0.0
+        median_tokens = self._percentile(token_counts, 0.50)
+        p75_tokens = self._percentile(token_counts, 0.75)
+        short_block_rate = self._rate(token < self.config.min_tokens for token in token_counts)
+        under_target_rate = self._rate(token < self.config.target_tokens * 0.50 for token in token_counts)
+        protected_block_rate = self._rate(unit.type in PROTECTED_BLOCK_TYPES for unit in units)
+
+        transitions = max(0, block_count - 1)
+        title_changes = 0
+        top_title_changes = 0
+        semantic_distances: list[float] = []
+        for left, right in zip(units, units[1:]):
+            if tuple(left.title_path) != tuple(right.title_path):
+                title_changes += 1
+            if left.title_path and right.title_path and left.title_path[0] != right.title_path[0]:
+                top_title_changes += 1
+            semantic_distances.append(round(1.0 - self._semantic_similarity([left], right), 4))
+
+        title_transition_rate = round(title_changes / transitions, 4) if transitions else 0.0
+        top_title_transition_rate = round(top_title_changes / transitions, 4) if transitions else 0.0
+        avg_semantic_distance = (
+            round(sum(semantic_distances) / len(semantic_distances), 4)
+            if semantic_distances
+            else 0.0
+        )
+        p75_semantic_distance = self._percentile(semantic_distances, 0.75)
+        semantic_continuity = round(max(0.0, 1.0 - avg_semantic_distance), 4)
+
+        block_density = min(1.0, block_count / 80)
+        context_need = round(
+            min(
+                1.0,
+                0.30 * short_block_rate
+                + 0.22 * under_target_rate
+                + 0.20 * block_density
+                + 0.18 * semantic_continuity
+                + 0.10 * protected_block_rate,
+            ),
+            4,
+        )
+        structure_need = round(
+            min(
+                1.0,
+                0.36 * top_title_transition_rate
+                + 0.24 * title_transition_rate
+                + 0.24 * avg_semantic_distance
+                + 0.10 * p75_semantic_distance
+                + 0.06 * protected_block_rate,
+            ),
+            4,
+        )
+
+        return {
+            "block_count": block_count,
+            "avg_block_tokens": avg_tokens,
+            "median_block_tokens": median_tokens,
+            "p75_block_tokens": p75_tokens,
+            "short_block_rate": short_block_rate,
+            "under_half_target_rate": under_target_rate,
+            "protected_block_rate": protected_block_rate,
+            "title_transition_rate": title_transition_rate,
+            "top_title_transition_rate": top_title_transition_rate,
+            "avg_adjacent_semantic_distance": avg_semantic_distance,
+            "p75_adjacent_semantic_distance": p75_semantic_distance,
+            "semantic_continuity": semantic_continuity,
+            "context_need": context_need,
+            "structure_need": structure_need,
+        }
+
+    def _percentile(self, values: list[int | float], q: float) -> float:
+        if not values:
+            return 0.0
+        ordered = sorted(values)
+        index = min(len(ordered) - 1, max(0, round((len(ordered) - 1) * q)))
+        return round(float(ordered[index]), 4)
+
+    def _rate(self, items: Iterable[bool]) -> float:
+        values = list(items)
+        return round(sum(1 for item in values if item) / len(values), 4) if values else 0.0
+
+    def _config_snapshot(self, config: HscRagConfig) -> dict[str, Any]:
+        return {
+            "min_tokens": config.min_tokens,
+            "target_tokens": config.target_tokens,
+            "max_tokens": config.max_tokens,
+            "semantic_boundary_threshold": config.semantic_boundary_threshold,
+            "semantic_soft_boundary_threshold": config.semantic_soft_boundary_threshold,
+            "semantic_distance_threshold": config.semantic_distance_threshold,
+            "semantic_window_blocks": config.semantic_window_blocks,
+            "structure_signal_weight": config.structure_signal_weight,
+            "semantic_signal_weight": config.semantic_signal_weight,
+            "length_signal_weight": config.length_signal_weight,
+        }
 
     def _score_boundary(
         self,

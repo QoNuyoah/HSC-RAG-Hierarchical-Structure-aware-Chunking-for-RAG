@@ -450,7 +450,7 @@
       "retriever": "bm25",
       "chunks_path": "data\\processed\\qasper\\train\\chunks_hsc_rag.jsonl",
       "results_path": "data\\processed\\qasper\\train\\retrieval_results_hsc_rag_bm25.jsonl",
-      "chunks": 61,
+      "chunks": 62,
       "queries_total_in_gold_file": 33,
       "queries_evaluated": 28,
       "queries_skipped": {
@@ -472,17 +472,17 @@
         "ndcg@5": "Binary chunk-relevance nDCG: a chunk is relevant if it contains at least one gold evidence block."
       },
       "metrics": {
-        "recall@1": 0.217262,
-        "hit_rate@1": 0.321429,
+        "recall@1": 0.190476,
+        "hit_rate@1": 0.285714,
         "full_recall_rate@1": 0.107143,
-        "recall@3": 0.568452,
-        "hit_rate@3": 0.678571,
+        "recall@3": 0.550595,
+        "hit_rate@3": 0.642857,
         "full_recall_rate@3": 0.428571,
-        "recall@5": 0.723214,
+        "recall@5": 0.705357,
         "hit_rate@5": 0.785714,
-        "full_recall_rate@5": 0.642857,
-        "mrr": 0.515704,
-        "ndcg@5": 0.509134,
+        "full_recall_rate@5": 0.607143,
+        "mrr": 0.488919,
+        "ndcg@5": 0.485041,
         "avg_gold_blocks_per_query": 1.678571
       }
     },
@@ -491,7 +491,7 @@
       "retriever": "dense",
       "chunks_path": "data\\processed\\qasper\\train\\chunks_hsc_rag.jsonl",
       "results_path": "data\\processed\\qasper\\train\\retrieval_results_hsc_rag_dense.jsonl",
-      "chunks": 61,
+      "chunks": 62,
       "queries_total_in_gold_file": 33,
       "queries_evaluated": 28,
       "queries_skipped": {
@@ -512,7 +512,7 @@
         "local_files_only": true,
         "warning": null,
         "faiss_index": "IndexFlatIP",
-        "embedding_dim": 60
+        "embedding_dim": 61
       },
       "metric_definitions": {
         "recall@k": "Mean block-level evidence recall: covered gold_block_ids in top-k chunks divided by all gold_block_ids.",
@@ -522,17 +522,17 @@
         "ndcg@5": "Binary chunk-relevance nDCG: a chunk is relevant if it contains at least one gold evidence block."
       },
       "metrics": {
-        "recall@1": 0.258929,
-        "hit_rate@1": 0.321429,
+        "recall@1": 0.232143,
+        "hit_rate@1": 0.285714,
         "full_recall_rate@1": 0.178571,
-        "recall@3": 0.479167,
-        "hit_rate@3": 0.535714,
-        "full_recall_rate@3": 0.392857,
-        "recall@5": 0.669643,
-        "hit_rate@5": 0.75,
-        "full_recall_rate@5": 0.571429,
-        "mrr": 0.499888,
-        "ndcg@5": 0.493631,
+        "recall@3": 0.443452,
+        "hit_rate@3": 0.5,
+        "full_recall_rate@3": 0.357143,
+        "recall@5": 0.598214,
+        "hit_rate@5": 0.678571,
+        "full_recall_rate@5": 0.5,
+        "mrr": 0.474888,
+        "ndcg@5": 0.446968,
         "avg_gold_blocks_per_query": 1.678571
       }
     },
@@ -541,7 +541,7 @@
       "retriever": "hybrid",
       "chunks_path": "data\\processed\\qasper\\train\\chunks_hsc_rag.jsonl",
       "results_path": "data\\processed\\qasper\\train\\retrieval_results_hsc_rag_hybrid.jsonl",
-      "chunks": 61,
+      "chunks": 62,
       "queries_total_in_gold_file": 33,
       "queries_evaluated": 28,
       "queries_skipped": {
@@ -564,7 +564,7 @@
           "local_files_only": true,
           "warning": null,
           "faiss_index": "IndexFlatIP",
-          "embedding_dim": 60
+          "embedding_dim": 61
         }
       },
       "metric_definitions": {
@@ -575,17 +575,17 @@
         "ndcg@5": "Binary chunk-relevance nDCG: a chunk is relevant if it contains at least one gold evidence block."
       },
       "metrics": {
-        "recall@1": 0.241071,
-        "hit_rate@1": 0.321429,
+        "recall@1": 0.214286,
+        "hit_rate@1": 0.285714,
         "full_recall_rate@1": 0.142857,
-        "recall@3": 0.514881,
-        "hit_rate@3": 0.607143,
-        "full_recall_rate@3": 0.392857,
-        "recall@5": 0.705357,
+        "recall@3": 0.46131,
+        "hit_rate@3": 0.535714,
+        "full_recall_rate@3": 0.357143,
+        "recall@5": 0.6875,
         "hit_rate@5": 0.785714,
-        "full_recall_rate@5": 0.607143,
-        "mrr": 0.512133,
-        "ndcg@5": 0.505385,
+        "full_recall_rate@5": 0.571429,
+        "mrr": 0.484752,
+        "ndcg@5": 0.480793,
         "avg_gold_blocks_per_query": 1.678571
       }
     }
@@ -596,17 +596,17 @@
       "baseline": "fixed",
       "target": "hsc_rag",
       "delta_target_minus_baseline": {
-        "recall@1": 0.059524,
-        "hit_rate@1": 0.071429,
+        "recall@1": 0.032738,
+        "hit_rate@1": 0.035714,
         "full_recall_rate@1": 0.035714,
-        "recall@3": 0.130952,
-        "hit_rate@3": 0.178571,
+        "recall@3": 0.113095,
+        "hit_rate@3": 0.142857,
         "full_recall_rate@3": 0.071428,
-        "recall@5": 0.089285,
+        "recall@5": 0.071428,
         "hit_rate@5": 0.071428,
-        "full_recall_rate@5": 0.107143,
-        "mrr": 0.064711,
-        "ndcg@5": 0.071057,
+        "full_recall_rate@5": 0.071429,
+        "mrr": 0.037926,
+        "ndcg@5": 0.046964,
         "avg_gold_blocks_per_query": 0.0
       }
     },
@@ -653,17 +653,17 @@
       "baseline": "fixed",
       "target": "hsc_rag",
       "delta_target_minus_baseline": {
-        "recall@1": 0.059524,
-        "hit_rate@1": 0.0,
+        "recall@1": 0.032738,
+        "hit_rate@1": -0.035715,
         "full_recall_rate@1": 0.071428,
-        "recall@3": -0.047619,
-        "hit_rate@3": -0.071429,
-        "full_recall_rate@3": -0.035714,
-        "recall@5": 0.035714,
-        "hit_rate@5": 0.071429,
-        "full_recall_rate@5": 0.0,
-        "mrr": 0.005359,
-        "ndcg@5": 0.02963,
+        "recall@3": -0.083334,
+        "hit_rate@3": -0.107143,
+        "full_recall_rate@3": -0.071428,
+        "recall@5": -0.035715,
+        "hit_rate@5": 0.0,
+        "full_recall_rate@5": -0.071429,
+        "mrr": -0.019641,
+        "ndcg@5": -0.017033,
         "avg_gold_blocks_per_query": 0.0
       }
     },
@@ -710,17 +710,17 @@
       "baseline": "fixed",
       "target": "hsc_rag",
       "delta_target_minus_baseline": {
-        "recall@1": 0.005952,
-        "hit_rate@1": -0.035714,
+        "recall@1": -0.020833,
+        "hit_rate@1": -0.071429,
         "full_recall_rate@1": 0.0,
-        "recall@3": 0.02381,
-        "hit_rate@3": 0.035714,
-        "full_recall_rate@3": 0.0,
-        "recall@5": 0.017857,
+        "recall@3": -0.029761,
+        "hit_rate@3": -0.035715,
+        "full_recall_rate@3": -0.035714,
+        "recall@5": 0.0,
         "hit_rate@5": 0.035714,
-        "full_recall_rate@5": 0.0,
-        "mrr": -0.012201,
-        "ndcg@5": -0.001921,
+        "full_recall_rate@5": -0.035714,
+        "mrr": -0.039582,
+        "ndcg@5": -0.026513,
         "avg_gold_blocks_per_query": 0.0
       }
     },
@@ -766,19 +766,14 @@
   "best_by_metric": {
     "recall@1": [
       {
-        "strategy": "hsc_rag",
-        "retriever": "dense",
-        "value": 0.258929
-      },
-      {
-        "strategy": "hsc_rag",
-        "retriever": "hybrid",
-        "value": 0.241071
-      },
-      {
         "strategy": "fixed",
         "retriever": "hybrid",
         "value": 0.235119
+      },
+      {
+        "strategy": "hsc_rag",
+        "retriever": "dense",
+        "value": 0.232143
       },
       {
         "strategy": "semantic",
@@ -787,20 +782,25 @@
       },
       {
         "strategy": "hsc_rag",
+        "retriever": "hybrid",
+        "value": 0.214286
+      },
+      {
+        "strategy": "semantic",
         "retriever": "bm25",
-        "value": 0.217262
+        "value": 0.202381
       }
     ],
     "recall@3": [
       {
-        "strategy": "hsc_rag",
-        "retriever": "bm25",
-        "value": 0.568452
-      },
-      {
         "strategy": "recursive",
         "retriever": "dense",
         "value": 0.5625
+      },
+      {
+        "strategy": "hsc_rag",
+        "retriever": "bm25",
+        "value": 0.550595
       },
       {
         "strategy": "fixed",
@@ -813,9 +813,9 @@
         "value": 0.526786
       },
       {
-        "strategy": "hsc_rag",
+        "strategy": "fixed",
         "retriever": "hybrid",
-        "value": 0.514881
+        "value": 0.491071
       }
     ],
     "recall@5": [
@@ -835,13 +835,13 @@
         "value": 0.741071
       },
       {
-        "strategy": "hsc_rag",
-        "retriever": "bm25",
-        "value": 0.723214
-      },
-      {
         "strategy": "semantic",
         "retriever": "dense",
+        "value": 0.705357
+      },
+      {
+        "strategy": "hsc_rag",
+        "retriever": "bm25",
         "value": 0.705357
       }
     ],
@@ -852,32 +852,27 @@
         "value": 0.524334
       },
       {
-        "strategy": "hsc_rag",
-        "retriever": "bm25",
-        "value": 0.515704
-      },
-      {
-        "strategy": "hsc_rag",
-        "retriever": "hybrid",
-        "value": 0.512133
-      },
-      {
         "strategy": "recursive",
         "retriever": "dense",
         "value": 0.502369
       },
       {
-        "strategy": "hsc_rag",
+        "strategy": "semantic",
+        "retriever": "hybrid",
+        "value": 0.499382
+      },
+      {
+        "strategy": "fixed",
         "retriever": "dense",
-        "value": 0.499888
+        "value": 0.494529
+      },
+      {
+        "strategy": "recursive",
+        "retriever": "hybrid",
+        "value": 0.494205
       }
     ],
     "ndcg@5": [
-      {
-        "strategy": "hsc_rag",
-        "retriever": "bm25",
-        "value": 0.509134
-      },
       {
         "strategy": "fixed",
         "retriever": "hybrid",
@@ -889,14 +884,19 @@
         "value": 0.505724
       },
       {
-        "strategy": "hsc_rag",
-        "retriever": "hybrid",
-        "value": 0.505385
-      },
-      {
         "strategy": "recursive",
         "retriever": "dense",
         "value": 0.505074
+      },
+      {
+        "strategy": "hsc_rag",
+        "retriever": "bm25",
+        "value": 0.485041
+      },
+      {
+        "strategy": "recursive",
+        "retriever": "bm25",
+        "value": 0.481412
       }
     ]
   }

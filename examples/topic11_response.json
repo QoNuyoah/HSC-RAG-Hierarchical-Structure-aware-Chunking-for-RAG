@@ -64,6 +64,7 @@
         "protected_block_intact",
         "title_path_consistent",
         "final_flush",
+        "hsc_adaptive_boundary",
         "hsc_structure_aware"
       ],
       "metadata": {
@@ -85,6 +86,61 @@
             "boundary_score": 0.62,
             "soft_boundary_score": 0.52,
             "semantic_distance": 0.72
+          }
+        },
+        "adaptive_boundary": {
+          "enabled": true,
+          "profile": "balanced",
+          "boundary_strength": "standard",
+          "method": "document_statistics",
+          "decision_reason": "default_thresholds",
+          "stats": {
+            "block_count": 2,
+            "avg_block_tokens": 28.0,
+            "median_block_tokens": 20.0,
+            "p75_block_tokens": 36.0,
+            "short_block_rate": 0.0,
+            "under_half_target_rate": 1.0,
+            "protected_block_rate": 0.5,
+            "title_transition_rate": 0.0,
+            "top_title_transition_rate": 0.0,
+            "avg_adjacent_semantic_distance": 0.7264,
+            "p75_adjacent_semantic_distance": 0.7264,
+            "semantic_continuity": 0.2736,
+            "context_need": 0.3242,
+            "structure_need": 0.277
+          },
+          "decision_basis": {
+            "context_advantage": 0.0472,
+            "compact_blocks": true,
+            "structure_dominant": false,
+            "uses_dataset_name": false,
+            "uses_gold_evidence": false,
+            "uses_query_text": false
+          },
+          "base_config": {
+            "min_tokens": 20,
+            "target_tokens": 120,
+            "max_tokens": 260,
+            "semantic_boundary_threshold": 0.62,
+            "semantic_soft_boundary_threshold": 0.52,
+            "semantic_distance_threshold": 0.72,
+            "semantic_window_blocks": 3,
+            "structure_signal_weight": 0.45,
+            "semantic_signal_weight": 0.35,
+            "length_signal_weight": 0.2
+          },
+          "effective_config": {
+            "min_tokens": 20,
+            "target_tokens": 120,
+            "max_tokens": 260,
+            "semantic_boundary_threshold": 0.62,
+            "semantic_soft_boundary_threshold": 0.52,
+            "semantic_distance_threshold": 0.72,
+            "semantic_window_blocks": 3,
+            "structure_signal_weight": 0.45,
+            "semantic_signal_weight": 0.35,
+            "length_signal_weight": 0.2
           }
         }
       }
@@ -109,6 +165,7 @@
     "max_tokens": 56,
     "quality_flag_counts": {
       "final_flush": 1,
+      "hsc_adaptive_boundary": 1,
       "hsc_structure_aware": 1,
       "length_ok": 1,
       "protected_block_intact": 1,

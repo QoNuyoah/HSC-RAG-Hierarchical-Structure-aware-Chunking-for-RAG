@@ -12,7 +12,7 @@ from sklearn.decomposition import TruncatedSVD
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.preprocessing import normalize
 
-from app.retrievers.bm25 import tokenize
+from app.retrievers.bm25 import TokenizerProfile, tokenize
 
 
 @dataclass(frozen=True)
@@ -59,6 +59,7 @@ class DenseFaissRetriever:
         include_metadata: bool = False,
         svd_dim: int = 128,
         local_files_only: bool = True,
+        tokenizer_profile: TokenizerProfile = "mixed",
     ):
         self.chunks = chunks
         self.encoder_request = encoder
@@ -66,6 +67,7 @@ class DenseFaissRetriever:
         self.include_metadata = include_metadata
         self.svd_dim = svd_dim
         self.local_files_only = local_files_only
+        self.tokenizer_profile = tokenizer_profile
         self._texts = [self._text_for_chunk(chunk) for chunk in chunks]
         self._model = None
         self._vectorizer: TfidfVectorizer | None = None
@@ -109,6 +111,7 @@ class DenseFaissRetriever:
             "include_metadata": self.include_metadata,
             "svd_dim": self.svd_dim,
             "local_files_only": self.local_files_only,
+            "tokenizer_profile": self.tokenizer_profile,
             "warning": self.encoder_warning,
             "faiss_index": "IndexFlatIP",
             "embedding_dim": self.dim,
@@ -149,7 +152,7 @@ class DenseFaissRetriever:
 
     def _encode_corpus_tfidf_svd(self) -> np.ndarray:
         self._vectorizer = TfidfVectorizer(
-            analyzer=tokenize,
+            analyzer=lambda text: tokenize(text, profile=self.tokenizer_profile),
             lowercase=False,
             max_features=8000,
         )

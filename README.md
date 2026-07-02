@@ -277,6 +277,31 @@ boundary_score = structure_signal * w_structure
 
 其中 `structure_signal` 来自标题路径、顶层章节、保护块切换等结构证据；`semantic_distance` 来自当前 buffer 与右侧候选块的本地词袋余弦距离；`length_pressure` 表示当前 chunk 接近目标长度的程度。`split_reason` 会记录为 `semantic_boundary`、`section_boundary_respected`、`target_length_boundary` 或 `max_length_boundary`，用于证明主算法是“结构/语义感知分段”，而不是普通定长或纯标题规则切分。
 
+HSC-RAG 默认开启通用自适应边界配置。该配置不读取数据集名称、文档 ID、query、答案、gold evidence 或任何具体业务词，而是只根据当前 `GovernedDocument` 自身统计量选择边界强度：
+
+- 块数量、平均/中位/75 分位块长度；
+- 短块比例、低于半个目标长度的块比例、protected block 比例；
+- 标题路径切换率、顶层标题切换率；
+- 相邻内容块的本地词袋语义距离均值和 75 分位。
+
+算法会把这些统计量归纳为 `context_need` 与 `structure_need`。当短而连续的块占比较高、语义连续性较强时，边界强度会放宽到 `context_coverage` 或 `high_context_coverage`，以提高上下文覆盖；当顶层标题频繁切换或相邻块语义距离较大时，边界强度会保持或收紧为 `structure_preserving`，避免为了提高召回而盲目合并章节。每个 chunk 会在 `metadata.adaptive_boundary` 中记录 `profile`、`boundary_strength`、`decision_reason`、`stats`、`decision_basis`、`base_config` 和 `effective_config`，用于答辩时解释本篇文档为什么采用当前边界强度。
+
+如需做固定阈值消融实验，可以关闭自适应配置：
+
+```powershell
+& E:\anaconda3\envs\HSC_RAG\python.exe scripts\run_chunking.py --input data\processed\qasper\train\governed_documents.jsonl --output-dir runs\fixed_boundary_ablation --strategies hsc_rag --no-hsc-adaptive-boundary
+```
+
+在 10 篇公开样本回归中，默认自适应配置的验收结果写入：
+
+```text
+data\processed\qasper_10\adaptive_default
+reports\acceptance_checklist_qasper_10_adaptive.md
+reports\acceptance_metrics_hsc_rag_qasper_10_adaptive.json
+```
+
+其中 HSC-RAG + BM25 相对 fixed 的 Recall@5 提升 `+22.02%`，nDCG@5 提升 `+28.86%`；`source_anchor` 完整率、protected block 完整率均为 `100%`，边界评分覆盖率为 `87.34%`。
+
 ## 运行检索评估
 
 运行 BM25 / Dense / Hybrid 三类检索评估：
@@ -364,6 +389,21 @@ DuReader search.dev -> GovernedDocument
 & E:\anaconda3\envs\HSC_RAG\python.exe scripts\run_retrieval_eval.py --chunk-dir data\processed\dureader\search_dev --gold-evidence data\processed\dureader\search_dev\gold_evidence.jsonl --strategies fixed,hsc_rag --retrievers bm25,dense,hybrid --top-k 1,3,5 --ndcg-k 5 --dense-encoder tfidf_svd --dense-svd-dim 128 --hybrid-alpha 0.55
 ```
 
+中文检索 profile 评估：
+
+```powershell
+& E:\anaconda3\envs\HSC_RAG\python.exe scripts\run_retrieval_eval.py `
+  --chunk-dir runs\chinese_chunking_sweep\hsc_cn_512_900 `
+  --gold-evidence data\processed\dureader\search_dev\gold_evidence.jsonl `
+  --output-dir runs\chinese_chunking_sweep\hsc_cn_512_900\eval_zh_cjk_profile `
+  --strategies fixed,hsc_rag `
+  --retrieval-profile zh_cjk `
+  --top-k 1,3,5 `
+  --ndcg-k 5
+```
+
+`zh_cjk` profile 只把检索 tokenizer 切换为 `cjk_2_4gram` 中文 2-4 字符 ngram，用于改善通用中文短问句在结构化文档片段中的检索覆盖。它不会修改分段算法，也不会改写 `retrievers`、`dense_svd_dim`、`hybrid_alpha` 等排序参数；如需做实验调参，应显式写在评测命令里，不能固化为默认通用能力。本 profile 是语言层面的检索配置，不包含任何面向具体业务词或具体文档内容的规则。
+
 DuReader 主要结果：
 
 | Strategy | Retriever | Recall@1 | Recall@3 | Recall@5 | MRR | nDCG@5 |
@@ -375,10 +415,11 @@ DuReader 主要结果：
 | fixed | Hybrid | 0.465986 | 0.700680 | 0.826531 | 0.705782 | 0.711163 |
 | hsc_rag | Hybrid | 0.272109 | 0.653061 | 0.853741 | 0.600761 | 0.646463 |
 
-DuReader 的结论和 QASPER 不完全相同：fixed 在 Recall@1/MRR 上更强，因为 DuReader 的 gold evidence 是段落级标注，较细的 chunk 更容易首位命中；HSC-RAG 在结构质量和 Recall@5 上更好，例如 BM25 Recall@5 从 0.846939 提升到 0.870748，并将 `mixed_title_paths` 从 93 降到 42。完整说明见：
+DuReader 的结论和 QASPER 不完全相同：fixed 在 Recall@1 上仍有优势，因为 DuReader 的 gold evidence 是段落级标注，较细的 chunk 更容易首位命中；HSC-RAG 在结构质量、Top-5 证据覆盖和完整证据覆盖上更好，并将 `mixed_title_paths` 从 93 降到 42。完整说明见：
 
 ```text
 reports\dureader_eval_summary.md
+reports\chinese_retrieval_profile_summary.md
 ```
 
 ## 启动后端 API
@@ -822,3 +863,4 @@ $env:PYTHONDONTWRITEBYTECODE="1"
 - `test_chunk_contract.py`：验证 `examples/topic11_request.json` 的服务输出与 `examples/topic11_response.json` 保持一致。
 - `test_hsc_rag_protected_blocks.py`：验证 table / code / formula 等 protected block 不被拆散。
 - `test_source_anchor_complete.py`：验证 `source_blocks` 与 `source_anchor` 聚合字段完整一致。
+- `test_hsc_rag_adaptive_boundary.py`：验证通用自适应边界配置只基于文档自身统计量，在短而连续的文档上放宽边界，在结构频繁切换的文档上保持结构边界，并支持 `adaptive_boundary=False` 固定阈值消融。

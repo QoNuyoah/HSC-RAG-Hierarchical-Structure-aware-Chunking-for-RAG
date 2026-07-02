@@ -4,6 +4,7 @@ pydantic
 rank-bm25
 faiss-cpu
 scikit-learn
+jieba
 numpy
 pandas
 sentence-transformers

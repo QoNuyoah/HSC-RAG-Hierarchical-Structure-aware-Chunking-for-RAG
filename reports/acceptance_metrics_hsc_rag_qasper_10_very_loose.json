@@ -1,0 +1,108 @@
+{
+  "strategy": "hsc_rag",
+  "chunks": 68,
+  "content_blocks": 1041,
+  "protected_blocks": 48,
+  "output_field_completeness_rate": 100.0,
+  "source_anchor_completeness_rate": 100.0,
+  "target_length_hit_rate": 97.06,
+  "no_sentence_break_rate": 100.0,
+  "protected_block_integrity_rate": 100.0,
+  "retrieval_uplift_vs_fixed_bm25": {
+    "recall@1": {
+      "fixed": 0.19375,
+      "hsc_rag": 0.29375,
+      "absolute_delta": 0.1,
+      "relative_uplift_percent": 51.61
+    },
+    "recall@3": {
+      "fixed": 0.439583,
+      "hsc_rag": 0.685417,
+      "absolute_delta": 0.245834,
+      "relative_uplift_percent": 55.92
+    },
+    "recall@5": {
+      "fixed": 0.68125,
+      "hsc_rag": 0.875,
+      "absolute_delta": 0.19375,
+      "relative_uplift_percent": 28.44
+    },
+    "mrr": {
+      "fixed": 0.479555,
+      "hsc_rag": 0.621458,
+      "absolute_delta": 0.141903,
+      "relative_uplift_percent": 29.59
+    },
+    "ndcg@5": {
+      "fixed": 0.475324,
+      "hsc_rag": 0.65222,
+      "absolute_delta": 0.176896,
+      "relative_uplift_percent": 37.22
+    }
+  },
+  "field_non_empty_counts": {
+    "tags": 68,
+    "summary": 68,
+    "entity_tags": 68,
+    "source_blocks": 68
+  },
+  "quality_flag_counts": {
+    "final_flush": 10,
+    "hsc_boundary_scored": 58,
+    "hsc_structure_aware": 68,
+    "length_ok": 66,
+    "max_length_boundary": 37,
+    "mixed_title_paths": 38,
+    "protected_block_intact": 9,
+    "section_boundary_respected": 20,
+    "semantic_boundary": 1,
+    "semantic_shift_observed": 2,
+    "short_chunk": 2,
+    "source_anchor_complete": 68,
+    "title_path_consistent": 19
+  },
+  "boundary_score_summary": {
+    "scored_boundaries": 58,
+    "chunk_coverage_rate": 0.8529,
+    "avg_boundary_score": 0.6234,
+    "max_boundary_score": 0.9711,
+    "avg_semantic_distance": 0.5745,
+    "avg_semantic_similarity": 0.4255,
+    "semantic_boundary_triggered": 1,
+    "split_reason_counts": {
+      "max_length_boundary": 37,
+      "section_boundary_respected": 20,
+      "semantic_boundary": 1
+    }
+  },
+  "protected_block_types": {
+    "figure": 14,
+    "table": 34
+  },
+  "manual_evaluation": {
+    "path": "reports\\manual_eval_hsc_rag.csv",
+    "rows": 20,
+    "completed_rows": 20,
+    "semantic_integrity": {
+      "avg": 4.67,
+      "min": 4.0,
+      "max": 5.0
+    },
+    "tag_summary": {
+      "avg": 4.22,
+      "min": 3.5,
+      "max": 4.5
+    }
+  },
+  "acceptance_status": {
+    "期望输出字段完整": "达标",
+    "不破句率": "达标",
+    "表格公式代码整体成块率": "达标",
+    "目标长度区间命中率": "达标",
+    "原文回链完整率": "达标",
+    "下游检索提升": "达标",
+    "结构语义边界可解释": "达标",
+    "语义完整人工评价": "达标",
+    "标签与摘要人工评价": "达标"
+  }
+}
