@@ -24,6 +24,48 @@ from app.chunkers.semantic import SemanticChunkConfig, SemanticChunker  # noqa: 
 from app.core.schemas import ChunkRunReport, RagChunk  # noqa: E402
 
 
+CHUNKING_PROFILES: dict[str, dict[str, Any]] = {
+    "default": {},
+    "zh_legal": {
+        "hsc_min": 128,
+    },
+}
+
+
+def _argument_was_provided(argv: list[str], flag: str) -> bool:
+    return any(item == flag or item.startswith(f"{flag}=") for item in argv)
+
+
+def apply_chunking_profile(
+    args: argparse.Namespace,
+    argv: list[str] | None = None,
+) -> argparse.Namespace:
+    """Apply named chunking presets without overriding explicit CLI arguments."""
+
+    profile_name = getattr(args, "chunking_profile", "default")
+    try:
+        profile = CHUNKING_PROFILES[profile_name]
+    except KeyError as exc:
+        known = ", ".join(sorted(CHUNKING_PROFILES))
+        raise ValueError(f"Unknown chunking profile: {profile_name}. Known profiles: {known}") from exc
+
+    explicit_args = list(sys.argv[1:] if argv is None else argv)
+    profile_flags = {
+        "hsc_min": "--hsc-min",
+    }
+    applied: dict[str, Any] = {}
+    for key, value in profile.items():
+        flag = profile_flags.get(key)
+        if flag and _argument_was_provided(explicit_args, flag):
+            continue
+        setattr(args, key, value)
+        applied[key] = value
+
+    args.effective_chunking_profile = profile_name
+    args.chunking_profile_overrides = applied
+    return args
+
+
 def display_path(path: Path) -> str:
     try:
         return str(path.resolve().relative_to(PROJECT_ROOT))
@@ -47,6 +89,15 @@ def parse_args() -> argparse.Namespace:
         "--strategies",
         default="fixed,recursive,semantic,hsc_rag",
         help="Comma-separated strategies: fixed,recursive,semantic,hsc_rag.",
+    )
+    parser.add_argument(
+        "--chunking-profile",
+        default="default",
+        choices=sorted(CHUNKING_PROFILES),
+        help=(
+            "Named chunking preset. zh_legal sets hsc_min=128 as a Chinese legal "
+            "document length prior while keeping adaptive HSC boundary scoring enabled."
+        ),
     )
     parser.add_argument("--fixed-target", type=int, default=512)
     parser.add_argument("--fixed-overlap", type=int, default=64)
@@ -180,6 +231,8 @@ def run_strategy(strategy: str, docs, args: argparse.Namespace) -> tuple[list[Ra
         )
         chunker = HscRagChunker(config)
         config_dict = config.__dict__
+        config_dict["chunking_profile"] = getattr(args, "effective_chunking_profile", "default")
+        config_dict["chunking_profile_overrides"] = getattr(args, "chunking_profile_overrides", {})
     else:
         raise ValueError(f"Unknown strategy: {strategy}")
 
@@ -190,7 +243,7 @@ def run_strategy(strategy: str, docs, args: argparse.Namespace) -> tuple[list[Ra
 
 
 def main() -> None:
-    args = parse_args()
+    args = apply_chunking_profile(parse_args())
     input_path = Path(args.input)
     output_dir = Path(args.output_dir) if args.output_dir else input_path.parent
     output_dir.mkdir(parents=True, exist_ok=True)

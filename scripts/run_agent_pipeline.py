@@ -30,7 +30,7 @@ from app.chunkers.common import estimate_tokens, load_governed_documents, normal
 from app.core.schemas import GovernedBlock, GovernedDocument, RagChunk, SourceAnchor  # noqa: E402
 from app.llm.chunk_enricher import ChunkEnrichmentConfig, ChunkSemanticEnricher  # noqa: E402
 from app.llm.providers import build_json_provider  # noqa: E402
-from run_chunking import report_for, run_strategy  # noqa: E402
+from run_chunking import CHUNKING_PROFILES, apply_chunking_profile, report_for, run_strategy  # noqa: E402
 from run_retrieval_eval import (  # noqa: E402
     best_by_metric,
     build_retriever,
@@ -64,6 +64,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--doc-id", default=None, help="Document id for Markdown input.")
 
     parser.add_argument("--strategies", default="fixed,hsc_rag", help="Comma-separated chunk strategies.")
+    parser.add_argument(
+        "--chunking-profile",
+        default="default",
+        choices=sorted(CHUNKING_PROFILES),
+        help=(
+            "Named chunking preset. zh_legal sets hsc_min=128 as a Chinese legal "
+            "document length prior while keeping adaptive HSC boundary scoring enabled."
+        ),
+    )
     parser.add_argument("--fixed-target", type=int, default=512)
     parser.add_argument("--fixed-overlap", type=int, default=64)
     parser.add_argument("--recursive-target", type=int, default=512)
@@ -79,6 +88,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--hsc-soft-boundary-threshold", type=float, default=0.52)
     parser.add_argument("--hsc-semantic-distance-threshold", type=float, default=0.72)
     parser.add_argument("--hsc-semantic-window-blocks", type=int, default=3)
+    parser.add_argument(
+        "--hsc-adaptive-boundary",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "Enable document-statistics adaptive HSC boundary thresholds. "
+            "Use --no-hsc-adaptive-boundary for fixed threshold experiments."
+        ),
+    )
 
     parser.add_argument("--run-eval", action="store_true", help="Run retrieval evaluation after chunking.")
     parser.add_argument("--gold-evidence", default=None, help="gold_evidence.jsonl for retrieval evaluation.")
@@ -91,6 +109,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--dense-model", default="sentence-transformers/all-MiniLM-L6-v2")
     parser.add_argument("--dense-svd-dim", type=int, default=128)
     parser.add_argument("--hybrid-alpha", type=float, default=0.55)
+    parser.add_argument(
+        "--tokenizer-profile",
+        default="mixed",
+        choices=["mixed", "cjk_bigram", "cjk_2_4gram", "jieba"],
+        help=(
+            "Tokenizer profile for BM25 and TF-IDF dense fallback. "
+            "Use cjk_2_4gram or jieba for Chinese retrieval experiments."
+        ),
+    )
     parser.add_argument("--allow-model-download", action="store_true")
 
     parser.add_argument("--run-llm-enrichment", action="store_true", help="Run LLM semantic organization.")
@@ -112,7 +139,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
-    args = parse_args()
+    args = apply_chunking_profile(parse_args())
     input_path = Path(args.input)
     output_dir = Path(args.output_dir) if args.output_dir else default_output_dir()
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -227,6 +254,9 @@ def run_chunk_stage(
         semantic_target=args.semantic_target,
         semantic_max=args.semantic_max,
         semantic_breakpoint_percentile=args.semantic_breakpoint_percentile,
+        chunking_profile=args.chunking_profile,
+        effective_chunking_profile=args.effective_chunking_profile,
+        chunking_profile_overrides=args.chunking_profile_overrides,
         hsc_min=args.hsc_min,
         hsc_target=args.hsc_target,
         hsc_max=args.hsc_max,
@@ -234,6 +264,7 @@ def run_chunk_stage(
         hsc_soft_boundary_threshold=args.hsc_soft_boundary_threshold,
         hsc_semantic_distance_threshold=args.hsc_semantic_distance_threshold,
         hsc_semantic_window_blocks=args.hsc_semantic_window_blocks,
+        hsc_adaptive_boundary=args.hsc_adaptive_boundary,
     )
     reports: list[dict[str, Any]] = []
     for strategy in parse_csv(args.strategies):
@@ -284,6 +315,7 @@ def run_eval_stage(*, output_dir: Path, args: argparse.Namespace) -> dict[str, A
                 dense_svd_dim=args.dense_svd_dim,
                 hybrid_alpha=args.hybrid_alpha,
                 local_files_only=local_files_only,
+                tokenizer_profile=args.tokenizer_profile,
             )
             reports.append(
                 evaluate_pair(

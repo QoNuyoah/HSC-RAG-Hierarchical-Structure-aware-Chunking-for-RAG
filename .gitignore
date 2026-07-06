@@ -36,6 +36,8 @@ runs/
 *.tar
 *.tar.gz
 *.gz
+data/raw/
+data/processed/
 
 # Model and vector caches
 models/

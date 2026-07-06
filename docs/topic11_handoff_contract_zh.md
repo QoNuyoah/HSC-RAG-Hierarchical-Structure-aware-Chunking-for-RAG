@@ -185,7 +185,7 @@ Content-Type: application/json
 说明：
 
 - `/api/v1/chunk` 和 `/api/v1/chunk/batch` 是最稳定的工程集成接口。
-- `/api/v1/agent/run` 展示“老师建议用 LangChain 完成”的智能体编排形式。
+- `/api/v1/agent/run` 用 LangChain 完成的智能体编排形式。
 - LangChain 层负责工具选择和智能体式交互，分段边界和 chunk 内容仍由确定性 HSC-RAG 工具产生。
 - API key 不写入代码、请求示例或仓库文件。远程模型模式只接受环境变量名，如 `OPENAI_API_KEY` 或 `DEEPSEEK_API_KEY`。
 

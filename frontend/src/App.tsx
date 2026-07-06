@@ -9,6 +9,7 @@ import {
   PlayCircle,
   RefreshCw,
   Search,
+  SlidersHorizontal,
   Tags,
   Upload
 } from 'lucide-react';
@@ -50,6 +51,69 @@ const caseLabels: Record<string, string> = {
   missing_hsc: '缺少 HSC'
 };
 
+type ChunkParameterState = {
+  strategy: Strategy;
+  min_tokens: number;
+  target_tokens: number;
+  max_tokens: number;
+  overlap_tokens: number;
+  breakpoint_percentile: number;
+  include_title_context: boolean;
+  protect_blocks: boolean;
+  adaptive_boundary: boolean;
+  semantic_boundary_scoring: boolean;
+  semantic_boundary_threshold: number;
+  semantic_soft_boundary_threshold: number;
+  semantic_distance_threshold: number;
+  semantic_window_blocks: number;
+  structure_signal_weight: number;
+  semantic_signal_weight: number;
+  length_signal_weight: number;
+  include_report: boolean;
+};
+
+const DEFAULT_CHUNK_PARAMETERS: ChunkParameterState = {
+  strategy: 'hsc_rag',
+  min_tokens: 180,
+  target_tokens: 512,
+  max_tokens: 900,
+  overlap_tokens: 64,
+  breakpoint_percentile: 75,
+  include_title_context: true,
+  protect_blocks: true,
+  adaptive_boundary: true,
+  semantic_boundary_scoring: true,
+  semantic_boundary_threshold: 0.62,
+  semantic_soft_boundary_threshold: 0.52,
+  semantic_distance_threshold: 0.72,
+  semantic_window_blocks: 3,
+  structure_signal_weight: 0.45,
+  semantic_signal_weight: 0.35,
+  length_signal_weight: 0.2,
+  include_report: true
+};
+
+function defaultParametersForStrategy(strategy: Strategy): ChunkParameterState {
+  const base = { ...DEFAULT_CHUNK_PARAMETERS, strategy };
+  if (strategy === 'fixed' || strategy === 'recursive') {
+    return {
+      ...base,
+      min_tokens: 128,
+      max_tokens: 512,
+      include_title_context: false
+    };
+  }
+  if (strategy === 'semantic') {
+    return {
+      ...base,
+      min_tokens: 160,
+      max_tokens: 768,
+      include_title_context: false
+    };
+  }
+  return base;
+}
+
 function format(value: number | undefined) {
   return typeof value === 'number' ? value.toFixed(3) : '-';
 }
@@ -60,6 +124,130 @@ function caseLabel(type: string) {
 
 function isRecord(value: unknown): value is Record<string, any> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isStrategy(value: unknown): value is Strategy {
+  return typeof value === 'string' && strategies.includes(value as Strategy);
+}
+
+function numberFromConfig(config: Record<string, unknown>, key: string, fallback: number) {
+  const value = config[key];
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+function booleanFromConfig(config: Record<string, unknown>, key: string, fallback: boolean) {
+  const value = config[key];
+  return typeof value === 'boolean' ? value : fallback;
+}
+
+function toPositiveInt(value: number, fallback: number) {
+  if (!Number.isFinite(value)) return fallback;
+  return Math.max(1, Math.round(value));
+}
+
+function toNonNegativeInt(value: number, fallback: number) {
+  if (!Number.isFinite(value)) return fallback;
+  return Math.max(0, Math.round(value));
+}
+
+function toBoundedNumber(value: number, fallback: number, min = 0, max = 1) {
+  if (!Number.isFinite(value)) return fallback;
+  return Math.min(max, Math.max(min, Number(value.toFixed(4))));
+}
+
+function chunkParametersFromPayload(payload: ChunkAgentRequest): ChunkParameterState {
+  const config = isRecord(payload.config) ? payload.config : {};
+  const strategy = isStrategy(payload.strategy) ? payload.strategy : DEFAULT_CHUNK_PARAMETERS.strategy;
+  const defaults = defaultParametersForStrategy(strategy);
+  return {
+    ...defaults,
+    min_tokens: numberFromConfig(config, 'min_tokens', defaults.min_tokens),
+    target_tokens: numberFromConfig(config, 'target_tokens', defaults.target_tokens),
+    max_tokens: numberFromConfig(config, 'max_tokens', defaults.max_tokens),
+    overlap_tokens: numberFromConfig(config, 'overlap_tokens', defaults.overlap_tokens),
+    breakpoint_percentile: numberFromConfig(config, 'breakpoint_percentile', defaults.breakpoint_percentile),
+    include_title_context: booleanFromConfig(config, 'include_title_context', defaults.include_title_context),
+    protect_blocks: booleanFromConfig(config, 'protect_blocks', defaults.protect_blocks),
+    adaptive_boundary: booleanFromConfig(config, 'adaptive_boundary', defaults.adaptive_boundary),
+    semantic_boundary_scoring: booleanFromConfig(
+      config,
+      'semantic_boundary_scoring',
+      defaults.semantic_boundary_scoring
+    ),
+    semantic_boundary_threshold: numberFromConfig(
+      config,
+      'semantic_boundary_threshold',
+      defaults.semantic_boundary_threshold
+    ),
+    semantic_soft_boundary_threshold: numberFromConfig(
+      config,
+      'semantic_soft_boundary_threshold',
+      defaults.semantic_soft_boundary_threshold
+    ),
+    semantic_distance_threshold: numberFromConfig(
+      config,
+      'semantic_distance_threshold',
+      defaults.semantic_distance_threshold
+    ),
+    semantic_window_blocks: numberFromConfig(config, 'semantic_window_blocks', defaults.semantic_window_blocks),
+    structure_signal_weight: numberFromConfig(
+      config,
+      'structure_signal_weight',
+      defaults.structure_signal_weight
+    ),
+    semantic_signal_weight: numberFromConfig(
+      config,
+      'semantic_signal_weight',
+      defaults.semantic_signal_weight
+    ),
+    length_signal_weight: numberFromConfig(config, 'length_signal_weight', defaults.length_signal_weight),
+    include_report: typeof payload.include_report === 'boolean' ? payload.include_report : defaults.include_report
+  };
+}
+
+function buildConfigFromParameters(parameters: ChunkParameterState): Record<string, unknown> {
+  const minTokens = toPositiveInt(parameters.min_tokens, DEFAULT_CHUNK_PARAMETERS.min_tokens);
+  const targetTokens = Math.max(minTokens, toPositiveInt(parameters.target_tokens, DEFAULT_CHUNK_PARAMETERS.target_tokens));
+  const maxTokens = Math.max(targetTokens, toPositiveInt(parameters.max_tokens, DEFAULT_CHUNK_PARAMETERS.max_tokens));
+  const config: Record<string, unknown> = {
+    min_tokens: minTokens,
+    target_tokens: targetTokens,
+    max_tokens: maxTokens,
+    include_title_context: parameters.include_title_context
+  };
+
+  if (parameters.strategy === 'fixed' || parameters.strategy === 'recursive') {
+    config.overlap_tokens = Math.min(targetTokens - 1, toNonNegativeInt(parameters.overlap_tokens, 0));
+  }
+
+  if (parameters.strategy === 'semantic') {
+    config.breakpoint_percentile = toBoundedNumber(parameters.breakpoint_percentile, 75, 1, 99);
+    config.protect_blocks = parameters.protect_blocks;
+  }
+
+  if (parameters.strategy === 'hsc_rag') {
+    config.protect_blocks = parameters.protect_blocks;
+    config.adaptive_boundary = parameters.adaptive_boundary;
+    config.semantic_boundary_scoring = parameters.semantic_boundary_scoring;
+    config.semantic_boundary_threshold = toBoundedNumber(parameters.semantic_boundary_threshold, 0.62);
+    config.semantic_soft_boundary_threshold = toBoundedNumber(parameters.semantic_soft_boundary_threshold, 0.52);
+    config.semantic_distance_threshold = toBoundedNumber(parameters.semantic_distance_threshold, 0.72);
+    config.semantic_window_blocks = toPositiveInt(parameters.semantic_window_blocks, 3);
+    config.structure_signal_weight = toBoundedNumber(parameters.structure_signal_weight, 0.45);
+    config.semantic_signal_weight = toBoundedNumber(parameters.semantic_signal_weight, 0.35);
+    config.length_signal_weight = toBoundedNumber(parameters.length_signal_weight, 0.2);
+  }
+
+  return config;
+}
+
+function applyChunkParameters(payload: ChunkAgentRequest, parameters: ChunkParameterState): ChunkAgentRequest {
+  return {
+    ...payload,
+    strategy: parameters.strategy,
+    config: buildConfigFromParameters(parameters),
+    include_report: parameters.include_report
+  };
 }
 
 function isGovernedDocument(value: unknown): value is GovernedDocument {
@@ -111,6 +299,7 @@ function App() {
   const [chunkResponse, setChunkResponse] = useState<ChunkAgentResponse | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
+  const [chunkParameters, setChunkParameters] = useState<ChunkParameterState>(DEFAULT_CHUNK_PARAMETERS);
 
   useEffect(() => {
     if (activePage === 'evaluation' && overview === null) {
@@ -182,6 +371,7 @@ function App() {
       const payload = normalizeChunkRequest(parsed);
       setSelectedFileName(file.name);
       setUploadPayload(payload);
+      setChunkParameters(chunkParametersFromPayload(payload));
     } catch (err) {
       setSelectedFileName(file.name);
       setUploadPayload(null);
@@ -191,17 +381,24 @@ function App() {
   }
 
   async function submitUploadedJson() {
-    if (!uploadPayload) return;
+    const requestPayload = uploadPayload ? applyChunkParameters(uploadPayload, chunkParameters) : null;
+    if (!requestPayload) return;
     try {
       setUploading(true);
       setUploadError('');
-      setChunkResponse(await postChunk(uploadPayload));
+      setUploadPayload(requestPayload);
+      setChunkResponse(await postChunk(requestPayload));
     } catch (err) {
       setChunkResponse(null);
       setUploadError(err instanceof Error ? err.message : '分段请求失败');
     } finally {
       setUploading(false);
     }
+  }
+
+  function handleChunkParametersChange(nextParameters: ChunkParameterState) {
+    setChunkParameters(nextParameters);
+    setChunkResponse(null);
   }
 
   const filteredQueries = useMemo(() => {
@@ -213,6 +410,10 @@ function App() {
   }, [queries, searchText]);
 
   const hscMetric = metrics.find((row) => row.strategy === 'hsc_rag');
+  const configuredUploadPayload = useMemo(
+    () => (uploadPayload ? applyChunkParameters(uploadPayload, chunkParameters) : null),
+    [uploadPayload, chunkParameters]
+  );
 
   return (
     <div className="app-shell">
@@ -269,10 +470,12 @@ function App() {
       {activePage === 'upload' ? (
         <UploadWorkbench
           fileName={selectedFileName}
-          payload={uploadPayload}
+          payload={configuredUploadPayload}
           response={chunkResponse}
           error={uploadError}
           uploading={uploading}
+          parameters={chunkParameters}
+          onParametersChange={handleChunkParametersChange}
           onPickFile={() => fileInputRef.current?.click()}
           onSubmit={() => void submitUploadedJson()}
         />
@@ -345,6 +548,8 @@ function UploadWorkbench({
   response,
   error,
   uploading,
+  parameters,
+  onParametersChange,
   onPickFile,
   onSubmit
 }: {
@@ -353,6 +558,8 @@ function UploadWorkbench({
   response: ChunkAgentResponse | null;
   error: string;
   uploading: boolean;
+  parameters: ChunkParameterState;
+  onParametersChange: (parameters: ChunkParameterState) => void;
   onPickFile: () => void;
   onSubmit: () => void;
 }) {
@@ -382,8 +589,10 @@ function UploadWorkbench({
           </div>
         )}
 
+        <ParameterPanel parameters={parameters} onChange={onParametersChange} />
+
         {payload ? (
-          <DocumentSummary document={payload.document} config={payload.config ?? {}} />
+          <DocumentSummary document={payload.document} strategy={payload.strategy ?? 'hsc_rag'} config={payload.config ?? {}} />
         ) : (
           <div className="empty-state upload-empty">未选择 JSON 文件</div>
         )}
@@ -398,7 +607,252 @@ function UploadWorkbench({
   );
 }
 
-function DocumentSummary({ document, config }: { document: GovernedDocument; config: Record<string, unknown> }) {
+function ParameterPanel({
+  parameters,
+  onChange
+}: {
+  parameters: ChunkParameterState;
+  onChange: (parameters: ChunkParameterState) => void;
+}) {
+  const update = <K extends keyof ChunkParameterState>(key: K, value: ChunkParameterState[K]) => {
+    onChange({ ...parameters, [key]: value });
+  };
+  const showOverlap = parameters.strategy === 'fixed' || parameters.strategy === 'recursive';
+  const showSemantic = parameters.strategy === 'semantic';
+  const showHsc = parameters.strategy === 'hsc_rag';
+  const showProtectedBlocks = showSemantic || showHsc;
+
+  return (
+    <section className="parameter-panel">
+      <div className="parameter-head">
+        <div className="section-heading">
+          <SlidersHorizontal size={18} />
+          <h2>分段参数</h2>
+        </div>
+        <span>{strategyNames[parameters.strategy]}</span>
+      </div>
+
+      <label className="field-block full-field">
+        <span>分段策略</span>
+        <select
+          value={parameters.strategy}
+          onChange={(event) => update('strategy', event.target.value as Strategy)}
+        >
+          {strategies.map((strategy) => (
+            <option key={strategy} value={strategy}>{strategyNames[strategy]}</option>
+          ))}
+        </select>
+      </label>
+
+      <div className="parameter-grid">
+        <NumberField
+          label="Min Tokens"
+          min={1}
+          step={1}
+          value={parameters.min_tokens}
+          onChange={(value) => update('min_tokens', value)}
+        />
+        <NumberField
+          label="Target Tokens"
+          min={1}
+          step={1}
+          value={parameters.target_tokens}
+          onChange={(value) => update('target_tokens', value)}
+        />
+        <NumberField
+          label="Max Tokens"
+          min={1}
+          step={1}
+          value={parameters.max_tokens}
+          onChange={(value) => update('max_tokens', value)}
+        />
+        {showOverlap && (
+          <NumberField
+            label="Overlap"
+            min={0}
+            step={1}
+            value={parameters.overlap_tokens}
+            onChange={(value) => update('overlap_tokens', value)}
+          />
+        )}
+        {showSemantic && (
+          <NumberField
+            label="Breakpoint %"
+            min={1}
+            max={99}
+            step={1}
+            value={parameters.breakpoint_percentile}
+            onChange={(value) => update('breakpoint_percentile', value)}
+          />
+        )}
+        {showHsc && (
+          <NumberField
+            label="Window Blocks"
+            min={1}
+            step={1}
+            value={parameters.semantic_window_blocks}
+            onChange={(value) => update('semantic_window_blocks', value)}
+          />
+        )}
+      </div>
+
+      <div className="toggle-grid">
+        <ToggleField
+          label="标题上下文"
+          checked={parameters.include_title_context}
+          onChange={(checked) => update('include_title_context', checked)}
+        />
+        <ToggleField
+          label="返回报告"
+          checked={parameters.include_report}
+          onChange={(checked) => update('include_report', checked)}
+        />
+        {showProtectedBlocks && (
+          <ToggleField
+            label="保护表格/代码/公式"
+            checked={parameters.protect_blocks}
+            onChange={(checked) => update('protect_blocks', checked)}
+          />
+        )}
+        {showHsc && (
+          <>
+            <ToggleField
+              label="自适应边界"
+              checked={parameters.adaptive_boundary}
+              onChange={(checked) => update('adaptive_boundary', checked)}
+            />
+            <ToggleField
+              label="语义边界评分"
+              checked={parameters.semantic_boundary_scoring}
+              onChange={(checked) => update('semantic_boundary_scoring', checked)}
+            />
+          </>
+        )}
+      </div>
+
+      {showHsc && (
+        <div className="advanced-parameter-grid">
+          <NumberField
+            label="Boundary"
+            min={0}
+            max={1}
+            step={0.01}
+            value={parameters.semantic_boundary_threshold}
+            onChange={(value) => update('semantic_boundary_threshold', value)}
+          />
+          <NumberField
+            label="Soft Boundary"
+            min={0}
+            max={1}
+            step={0.01}
+            value={parameters.semantic_soft_boundary_threshold}
+            onChange={(value) => update('semantic_soft_boundary_threshold', value)}
+          />
+          <NumberField
+            label="Distance"
+            min={0}
+            max={1}
+            step={0.01}
+            value={parameters.semantic_distance_threshold}
+            onChange={(value) => update('semantic_distance_threshold', value)}
+          />
+          <NumberField
+            label="W Structure"
+            min={0}
+            max={1}
+            step={0.01}
+            value={parameters.structure_signal_weight}
+            onChange={(value) => update('structure_signal_weight', value)}
+          />
+          <NumberField
+            label="W Semantic"
+            min={0}
+            max={1}
+            step={0.01}
+            value={parameters.semantic_signal_weight}
+            onChange={(value) => update('semantic_signal_weight', value)}
+          />
+          <NumberField
+            label="W Length"
+            min={0}
+            max={1}
+            step={0.01}
+            value={parameters.length_signal_weight}
+            onChange={(value) => update('length_signal_weight', value)}
+          />
+        </div>
+      )}
+    </section>
+  );
+}
+
+function NumberField({
+  label,
+  value,
+  min,
+  max,
+  step,
+  onChange
+}: {
+  label: string;
+  value: number;
+  min?: number;
+  max?: number;
+  step?: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <label className="field-block">
+      <span>{label}</span>
+      <input
+        type="number"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(event) => {
+          const raw = event.target.value.trim();
+          if (!raw) return;
+          const next = Number(raw);
+          if (Number.isFinite(next)) {
+            onChange(next);
+          }
+        }}
+      />
+    </label>
+  );
+}
+
+function ToggleField({
+  label,
+  checked,
+  onChange
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label className="toggle-field">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+      />
+      <span>{label}</span>
+    </label>
+  );
+}
+
+function DocumentSummary({
+  document,
+  strategy,
+  config
+}: {
+  document: GovernedDocument;
+  strategy: Strategy;
+  config: Record<string, unknown>;
+}) {
   const protectedTypes = new Set(['table', 'figure', 'code', 'formula', 'list']);
   const protectedBlocks = document.blocks.filter((block) => protectedTypes.has(block.type)).length;
   const contentBlocks = document.blocks.filter((block) => block.text?.trim()).length;
@@ -412,7 +866,7 @@ function DocumentSummary({ document, config }: { document: GovernedDocument; con
         <ResultMetric label="Blocks" value={String(document.blocks.length)} />
         <ResultMetric label="Content" value={String(contentBlocks)} />
         <ResultMetric label="Protected" value={String(protectedBlocks)} />
-        <ResultMetric label="Strategy" value="HSC-RAG" />
+        <ResultMetric label="Strategy" value={strategyNames[strategy]} />
       </div>
       <dl className="contract-list">
         <div>
