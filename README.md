@@ -26,6 +26,8 @@ QASPER -> GovernedDocument
 - 可运行的 HSC-RAG 分段智能体后端服务，提供标准 HTTP 接口供上游转换流水线调用。
 - 标准在线接口：输入 `GovernedDocument` 结构化全文，输出 `RagChunk[]` chunk 序列。
 - `QASPER -> GovernedDocument` 数据适配器。
+- `CJRC -> GovernedDocument` 中文司法文档适配器。
+- `LongBench-v2 -> GovernedDocument` 超长强结构上下文适配器。
 - `GovernedDocument / GovernedBlock / GovernedQuery / RagChunk` 等核心数据契约。
 - 四种分段策略：
   - `fixed`：固定窗口分段基线。
@@ -44,7 +46,9 @@ QASPER -> GovernedDocument
   - `nDCG@5`
 - FastAPI 实验结果 API。
 - React 前端实验看板。
+- 前端 JSON 上传与分段参数区，可上传符合 `GovernedDocument` / `ChunkAgentRequest` 契约的结构化文档并查看分段结果。
 - 同一 query 下 fixed / recursive / semantic / HSC-RAG 的 Top-5 bad case 对比页面。
+- LongBench-v2 进阶任务评估脚本：检索 top-k chunks 后进行 A/B/C/D 多选题答案判断。
 
 ## 项目结构
 
@@ -53,7 +57,11 @@ HSC_RAG
 ├── backend
 │   └── app
 │       ├── adapters
-│       │   └── qasper_adapter.py
+│       │   ├── qasper_adapter.py
+│       │   ├── cjrc_adapter.py
+│       │   ├── longbench_adapter.py
+│       │   ├── dureader_adapter.py
+│       │   └── hotpotqa_adapter.py
 │       ├── chunkers
 │       │   ├── common.py
 │       │   ├── fixed.py
@@ -84,12 +92,15 @@ HSC_RAG
 ├── reports
 └── scripts
     ├── convert_qasper.py
+    ├── convert_cjrc.py
+    ├── convert_longbench.py
     ├── convert_dureader.py
     ├── convert_hotpotqa.py
     ├── run_agent_pipeline.py
     ├── run_langchain_agent.py
     ├── run_chunking.py
     ├── run_llm_enrichment.py
+    ├── run_longbench_mcq_eval.py
     ├── run_retrieval_eval.py
     ├── validate_chunks.py
     └── validate_governed_outputs.py
@@ -140,7 +151,11 @@ lucide-react
 
 ## 数据说明
 
-本项目使用公开数据集 QASPER 作为主要实验数据来源。
+本项目采用“主实验 + 中文验证 + 进阶实验”的数据设计：
+
+- `QASPER`：英文结构化论文主实验。QASPER 提供问题与 evidence，可作为正式 Recall@k / nDCG 检索评估依据。
+- `CJRC`：中文司法文档验证实验。CJRC 用于验证中文分段、不破句、目标长度、source_anchor 回链和中文检索趋势。
+- `LongBench-v2`：超长强结构上下文进阶实验。LongBench-v2 主要是英文长上下文多选题，包含单文档、多文档、表格、代码、JSON、目录章节等复杂结构，适合验证结构/语义边界评分和下游多选任务；它没有官方 evidence span，因此基于正确选项文本派生的 Recall/nDCG 只能作为弱 evidence 趋势，不替代 QASPER 的正式 gold evidence 评估。
 
 本仓库保留了小规模处理后的实验产物：
 
@@ -160,6 +175,15 @@ data\processed\dureader\search_dev
 data\processed\hotpotqa\train_50
 reports\hotpotqa_eval_summary.md
 ```
+
+新增 CJRC 与 LongBench-v2 转换产物默认写入本地目录：
+
+```text
+data\processed\cjrc\...
+data\processed\longbench_v2\...
+```
+
+`data/raw/`、`data/processed/` 以及原始压缩包默认不纳入 Git 版本管理，避免把大数据集和实验生成物误提交到仓库。
 
 ## 数据转换
 
@@ -238,6 +262,54 @@ gold_evidence_items: 130
 evidence_match_rate: 1.0
 ```
 
+CJRC 中文司法文档转换示例：
+
+```powershell
+& E:\anaconda3\envs\HSC_RAG\python.exe scripts\convert_cjrc.py `
+  --split dev `
+  --limit-docs 0 `
+  --block-mode sentence `
+  --max-block-chars 220 `
+  --output-dir data\processed\cjrc\dev_all_sentence
+```
+
+CJRC dev 全量句级转换结果：
+
+```text
+documents: 1000
+blocks: 9046
+queries: 6000
+answerable/evaluable evidence queries: 3992
+spanless answerable queries: 588
+evidence_match_rate: 1.0
+```
+
+LongBench-v2 转换示例：
+
+```powershell
+& E:\anaconda3\envs\HSC_RAG\python.exe scripts\convert_longbench.py `
+  --input LongBench.zip `
+  --split eval `
+  --limit-docs 20 `
+  --max-block-chars 1800 `
+  --evidence-mode choice_overlap `
+  --output-dir data\processed\longbench_v2\eval_20
+```
+
+LongBench-v2 eval_20 转换结果：
+
+```text
+documents: 20
+blocks: 39804
+queries: 20
+weak_evidence_queries: 7
+evidence_items: 18
+weak_evidence_query_rate: 35%
+json_contexts: 4
+```
+
+说明：LongBench-v2 没有人工 evidence span，`weak_evidence_queries` 来自正确选项文本的通用匹配策略，仅用于辅助趋势分析。
+
 ## 运行分段实验
 
 生成四类 chunk：
@@ -292,6 +364,18 @@ HSC-RAG 默认开启通用自适应边界配置。该配置不读取数据集名
 & E:\anaconda3\envs\HSC_RAG\python.exe scripts\run_chunking.py --input data\processed\qasper\train\governed_documents.jsonl --output-dir runs\fixed_boundary_ablation --strategies hsc_rag --no-hsc-adaptive-boundary
 ```
 
+中文司法文档可启用 `zh_legal` 分段 profile：
+
+```powershell
+& E:\anaconda3\envs\HSC_RAG\python.exe scripts\run_chunking.py `
+  --input data\processed\cjrc\dev_all_sentence\governed_documents.jsonl `
+  --output-dir data\processed\cjrc\dev_all_sentence\zh_legal_profile `
+  --strategies fixed,hsc_rag `
+  --chunking-profile zh_legal
+```
+
+`zh_legal` 不是数据集硬编码，它只把中文司法文本的长度下限先验设置为 `hsc_min=128`；边界强度仍由 HSC-RAG 的自适应边界算法根据当前文档统计量自动决定。CJRC dev 全量句级数据上，`zh_legal` profile 将目标长度区间命中率从 `89.87%` 提升到 `94.15%`，超过 `90%` 验收线。
+
 在 10 篇公开样本回归中，默认自适应配置的验收结果写入：
 
 ```text
@@ -301,6 +385,18 @@ reports\acceptance_metrics_hsc_rag_qasper_10_adaptive.json
 ```
 
 其中 HSC-RAG + BM25 相对 fixed 的 Recall@5 提升 `+22.02%`，nDCG@5 提升 `+28.86%`；`source_anchor` 完整率、protected block 完整率均为 `100%`，边界评分覆盖率为 `87.34%`。
+
+LongBench-v2 eval_20 分段结果：
+
+```text
+fixed chunks: 6738
+hsc_rag chunks: 4114
+chunk reduction: 38.95%
+hsc_rag length_ok: 4093 / 4114 = 99.49%
+hsc_rag source_anchor_complete: 4114 / 4114 = 100%
+hsc_rag boundary_score coverage: 93.75%
+hsc_rag protected_block_intact: 1741
+```
 
 ## 运行检索评估
 
@@ -420,6 +516,125 @@ DuReader 的结论和 QASPER 不完全相同：fixed 在 Recall@1 上仍有优�
 ```text
 reports\dureader_eval_summary.md
 reports\chinese_retrieval_profile_summary.md
+```
+
+## CJRC 中文司法文档验证实验
+
+CJRC 用于补齐中文文档验证链路。与 DuReader/CMRC 相比，CJRC 更接近“中文长文本 + 问答证据定位”的文档治理场景，但其文档结构层次仍然较浅，因此主要用于中文分段质量和中文检索趋势验证。
+
+运行中文司法 profile 分段：
+
+```powershell
+& E:\anaconda3\envs\HSC_RAG\python.exe scripts\run_chunking.py `
+  --input data\processed\cjrc\dev_all_sentence\governed_documents.jsonl `
+  --output-dir data\processed\cjrc\dev_all_sentence\zh_legal_profile `
+  --strategies fixed,hsc_rag `
+  --chunking-profile zh_legal
+```
+
+运行中文 BM25 检索评估：
+
+```powershell
+& E:\anaconda3\envs\HSC_RAG\python.exe scripts\run_retrieval_eval.py `
+  --chunk-dir data\processed\cjrc\dev_all_sentence\zh_legal_profile `
+  --gold-evidence data\processed\cjrc\dev_all_sentence\gold_evidence.jsonl `
+  --output-dir data\processed\cjrc\dev_all_sentence\zh_legal_profile\global_eval_zh_cjk_bm25 `
+  --strategies fixed,hsc_rag `
+  --retrievers bm25 `
+  --top-k 1,3,5 `
+  --ndcg-k 5 `
+  --retrieval-profile zh_cjk `
+  --global-search
+```
+
+CJRC 当前结果：
+
+```text
+hsc_rag chunks: 1112
+length_ok: 1047 / 1112 = 94.15%
+source_anchor_complete: 1112 / 1112 = 100%
+hsc_adaptive_boundary: 1112 / 1112 = 100%
+boundary_score coverage: 10.07%
+```
+
+中文 BM25 弱结构场景下，HSC-RAG 相对 fixed 的检索指标全部为正向，但未达到严格 `+10%`：
+
+| Metric | fixed | HSC-RAG | Relative change |
+|---|---:|---:|---:|
+| Recall@1 | 0.532653 | 0.554943 | +4.18% |
+| Recall@3 | 0.676394 | 0.688961 | +1.86% |
+| Recall@5 | 0.722779 | 0.737099 | +1.98% |
+| MRR | 0.624690 | 0.641304 | +2.66% |
+| nDCG@5 | 0.637555 | 0.654038 | +2.59% |
+
+## LongBench-v2 超长强结构进阶实验
+
+LongBench-v2 用于验证 HSC-RAG 在超长上下文、多文档、目录章节、表格、代码、JSON 等强结构内容上的边界解释能力。当前 `LongBench.zip` 是 LongBench-v2，多数样本为英文长上下文多选题，不作为中文主实验。
+
+LongBench-v2 没有官方 evidence span，因此基于 `gold_evidence.jsonl` 的 Recall/nDCG 是“正确选项文本弱匹配”评估，只能作为辅助趋势。eval_20 弱 evidence 覆盖情况：
+
+```text
+queries: 20
+weak_evidence_queries: 7
+evidence_items: 18
+```
+
+弱 evidence 检索结果：
+
+| Retriever | Strategy | Recall@5 | nDCG@5 | MRR |
+|---|---|---:|---:|---:|
+| BM25 | fixed | 0.071429 | 0.087592 | 0.149175 |
+| BM25 | HSC-RAG | 0.214286 | 0.105321 | 0.091903 |
+| Dense | fixed | 0.000000 | 0.000000 | 0.023728 |
+| Dense | HSC-RAG | 0.000000 | 0.000000 | 0.019472 |
+| Hybrid | fixed | 0.071429 | 0.087592 | 0.149075 |
+| Hybrid | HSC-RAG | 0.071429 | 0.043796 | 0.068782 |
+
+BM25 下，HSC-RAG 的弱 evidence `Recall@5` 相对 fixed 提升 `+200.00%`，`nDCG@5` 提升约 `+20.24%`。该结果不能写成官方 gold evidence 结论，但可作为“强结构长文档趋势验证”。
+
+LongBench-v2 进阶多选题任务评估：
+
+```powershell
+& E:\anaconda3\envs\HSC_RAG\python.exe scripts\run_longbench_mcq_eval.py `
+  --governed-documents data\processed\longbench_v2\eval_20\governed_documents.jsonl `
+  --chunk-dir data\processed\longbench_v2\eval_20\chunked `
+  --output-dir data\processed\longbench_v2\eval_20\mcq_eval_lexical_top5_all `
+  --strategies fixed,hsc_rag `
+  --retrievers bm25,dense,hybrid `
+  --top-k 5 `
+  --judge-provider lexical
+```
+
+离线 lexical judge 结果：
+
+| Retriever | Strategy | Accuracy |
+|---|---|---:|
+| BM25 | fixed | 25% |
+| BM25 | HSC-RAG | 30% |
+| Dense | fixed | 20% |
+| Dense | HSC-RAG | 20% |
+| Hybrid | fixed | 20% |
+| Hybrid | HSC-RAG | 30% |
+
+如需展示真实大模型参与，可将 `--judge-provider lexical` 替换为 `--judge-provider openai_compatible`，并配置 SiliconFlow/Qwen：
+
+```powershell
+$env:SILICONFLOW_API_KEY = "这里填你的硅基流动 API Key"
+
+& E:\anaconda3\envs\HSC_RAG\python.exe scripts\run_longbench_mcq_eval.py `
+  --governed-documents data\processed\longbench_v2\eval_20\governed_documents.jsonl `
+  --chunk-dir data\processed\longbench_v2\eval_20\chunked `
+  --output-dir data\processed\longbench_v2\eval_20\mcq_eval_qwen_top5_bm25 `
+  --strategies fixed,hsc_rag `
+  --retrievers bm25 `
+  --top-k 5 `
+  --judge-provider openai_compatible `
+  --llm-base-url https://api.siliconflow.cn/v1 `
+  --llm-model Qwen/Qwen3-VL-32B-Instruct `
+  --llm-api-key-env SILICONFLOW_API_KEY `
+  --llm-timeout-seconds 120 `
+  --llm-max-output-tokens 300 `
+  --llm-disable-response-format
 ```
 
 ## 启动后端 API
