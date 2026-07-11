@@ -1,25 +1,26 @@
 {
   "task": "HSC-RAG LLM semantic organization",
   "input": "data\\processed\\qasper\\train\\chunks_hsc_rag.jsonl",
-  "output": "data\\processed\\qasper\\train\\chunks_hsc_rag_llm_enriched.jsonl",
-  "qa_output": null,
+  "output": "runs\\llm_enrich_demo\\chunks_enriched.jsonl",
+  "qa_output": "runs\\llm_enrich_demo\\hsc_rag_synthetic_qa.jsonl",
   "report_json": "reports\\llm_enrichment_summary.json",
-  "provider": "openai_compatible",
-  "model": "Qwen/Qwen3-VL-32B-Instruct",
-  "limit": 20,
-  "chunks": 20,
-  "qa_pairs": 0,
+  "provider": "mock",
+  "model": "mock-semantic-organizer-v1",
+  "limit": 5,
+  "chunks": 5,
+  "qa_pairs": 5,
   "prompt_version": "hsc-rag-enrich-v1",
   "score_average": {
-    "semantic_integrity_score": 4.795,
-    "summary_faithfulness_score": 5.0,
-    "tag_accuracy_score": 4.99
+    "semantic_integrity_score": 4.7,
+    "summary_faithfulness_score": 4.7,
+    "tag_accuracy_score": 4.5
   },
   "faithfulness_risk_counts": {
-    "low": 20
+    "low": 4,
+    "medium": 1
   },
   "provider_execution_counts": {
-    "remote_llm_call": 20
+    "mock_offline_replay": 5
   },
   "sample_chunk_ids": [
     "qasper_train_1909.00694_hsc_rag_chunk_00001",

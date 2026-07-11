@@ -17,6 +17,7 @@
   "retriever_config": {
     "retriever": "hybrid",
     "alpha_bm25": 0.55,
+    "tokenizer_profile": "mixed",
     "dense": {
       "encoder_request": "tfidf_svd",
       "encoder_name": "tfidf_svd",
@@ -24,6 +25,7 @@
       "include_metadata": false,
       "svd_dim": 128,
       "local_files_only": true,
+      "tokenizer_profile": "mixed",
       "warning": null,
       "faiss_index": "IndexFlatIP",
       "embedding_dim": 100

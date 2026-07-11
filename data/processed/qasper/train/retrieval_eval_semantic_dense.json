@@ -22,6 +22,7 @@
     "include_metadata": false,
     "svd_dim": 128,
     "local_files_only": true,
+    "tokenizer_profile": "mixed",
     "warning": null,
     "faiss_index": "IndexFlatIP",
     "embedding_dim": 100

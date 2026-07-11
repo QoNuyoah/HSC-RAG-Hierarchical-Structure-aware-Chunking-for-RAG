@@ -640,7 +640,7 @@ $env:SILICONFLOW_API_KEY = "这里填你的硅基流动 API Key"
 ## 启动后端 API
 
 ```powershell
-cd /d E:\practical_training\HSC_RAG\backend
+cd E:\practical_training\HSC_RAG\backend
 & E:\anaconda3\envs\HSC_RAG\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
@@ -769,7 +769,7 @@ POST http://127.0.0.1:8000/api/v1/chunk/batch
 第一次运行前安装依赖：
 
 ```powershell
-cd /d E:\practical_training\HSC_RAG\frontend
+cd E:\practical_training\HSC_RAG\frontend
 npm.cmd install
 ```
 

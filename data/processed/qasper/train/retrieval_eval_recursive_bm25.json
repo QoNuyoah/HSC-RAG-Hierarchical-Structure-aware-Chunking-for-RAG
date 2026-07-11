@@ -15,7 +15,9 @@
     "text"
   ],
   "retriever_config": {
-    "retriever": "bm25"
+    "retriever": "bm25",
+    "include_metadata": false,
+    "tokenizer_profile": "mixed"
   },
   "metric_definitions": {
     "recall@k": "Mean block-level evidence recall: covered gold_block_ids in top-k chunks divided by all gold_block_ids.",

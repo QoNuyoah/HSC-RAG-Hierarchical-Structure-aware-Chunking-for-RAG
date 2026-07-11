@@ -281,6 +281,191 @@ function normalizeChunkRequest(value: unknown): ChunkAgentRequest {
   throw new Error('JSON 必须是 GovernedDocument，或包含 document 字段的 ChunkAgentRequest。');
 }
 
+type UploadTokenizerProfile = 'auto' | 'mixed' | 'english' | 'cjk_2_4gram';
+
+type UploadEvaluationHit = {
+  rank: number;
+  chunk: RagChunk;
+  score: number;
+  relevant: boolean;
+  coveredGoldBlockIds: string[];
+};
+
+type UploadEvaluationResult = {
+  hits: UploadEvaluationHit[];
+  recallAtK: number | null;
+  hitAtK: number | null;
+  mrr: number | null;
+  ndcgAtK: number | null;
+  coveredGoldBlockIds: string[];
+  goldBlockIds: string[];
+  tokenizerProfile: UploadTokenizerProfile;
+};
+
+const STOPWORDS = new Set([
+  'a', 'an', 'and', 'are', 'as', 'at', 'be', 'by', 'for', 'from', 'how', 'in',
+  'is', 'it', 'of', 'on', 'or', 'that', 'the', 'this', 'to', 'what', 'when',
+  'where', 'which', 'who', 'why', 'with'
+]);
+
+function hasCjk(text: string) {
+  return /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/.test(text);
+}
+
+function cjkNgrams(text: string, minN = 2, maxN = 4) {
+  const tokens: string[] = [];
+  for (let n = minN; n <= Math.min(maxN, text.length); n += 1) {
+    for (let index = 0; index <= text.length - n; index += 1) {
+      tokens.push(text.slice(index, index + n));
+    }
+  }
+  return tokens;
+}
+
+function tokenizeLocal(text: string, profile: UploadTokenizerProfile): string[] {
+  const effectiveProfile = profile === 'auto' ? (hasCjk(text) ? 'cjk_2_4gram' : 'mixed') : profile;
+  const value = text || '';
+  if (effectiveProfile === 'cjk_2_4gram') {
+    const latin = value.match(/[A-Za-z0-9_]+(?:[-'][A-Za-z0-9_]+)?/g) ?? [];
+    const cjkSpans = value.match(/[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]+/g) ?? [];
+    return [
+      ...latin.map((token) => token.toLowerCase()),
+      ...cjkSpans.flatMap((span) => cjkNgrams(span))
+    ].filter((token) => token.length > 1 && !STOPWORDS.has(token));
+  }
+
+  const tokens = value.match(/[A-Za-z0-9_]+(?:[-'][A-Za-z0-9_]+)?|[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/g) ?? [];
+  return tokens
+    .map((token) => token.toLowerCase())
+    .filter((token) => token.length > 1 && !STOPWORDS.has(token));
+}
+
+function chunkSearchText(chunk: RagChunk) {
+  return [
+    chunk.text,
+    ...(chunk.title_path ?? []),
+    ...(chunk.tags ?? []),
+    chunk.summary ?? ''
+  ].join(' ');
+}
+
+function termCounts(tokens: string[]) {
+  const counts = new Map<string, number>();
+  tokens.forEach((token) => counts.set(token, (counts.get(token) ?? 0) + 1));
+  return counts;
+}
+
+function cosineScore(queryTokens: string[], docTokens: string[]) {
+  if (!queryTokens.length || !docTokens.length) return 0;
+  const query = termCounts(queryTokens);
+  const doc = termCounts(docTokens);
+  let dot = 0;
+  let queryNorm = 0;
+  let docNorm = 0;
+  query.forEach((value, token) => {
+    dot += value * (doc.get(token) ?? 0);
+    queryNorm += value * value;
+  });
+  doc.forEach((value) => {
+    docNorm += value * value;
+  });
+  if (!queryNorm || !docNorm) return 0;
+  return dot / Math.sqrt(queryNorm * docNorm);
+}
+
+function bm25Scores(queryTokens: string[], documents: string[][]) {
+  const k1 = 1.5;
+  const b = 0.75;
+  const docCount = documents.length || 1;
+  const docLengths = documents.map((tokens) => tokens.length || 1);
+  const avgDl = docLengths.reduce((sum, value) => sum + value, 0) / docCount;
+  const documentFrequency = new Map<string, number>();
+  documents.forEach((tokens) => {
+    new Set(tokens).forEach((token) => documentFrequency.set(token, (documentFrequency.get(token) ?? 0) + 1));
+  });
+  return documents.map((tokens, index) => {
+    const freqs = termCounts(tokens);
+    const lengthNorm = 1 - b + b * (docLengths[index] / Math.max(1, avgDl));
+    return queryTokens.reduce((score, token) => {
+      const tf = freqs.get(token) ?? 0;
+      if (!tf) return score;
+      const df = documentFrequency.get(token) ?? 0;
+      const idf = Math.log(1 + (docCount - df + 0.5) / (df + 0.5));
+      return score + idf * ((tf * (k1 + 1)) / (tf + k1 * lengthNorm));
+    }, 0);
+  });
+}
+
+function normalizeScores(scores: number[]) {
+  const max = Math.max(...scores, 0);
+  if (!max) return scores.map(() => 0);
+  return scores.map((score) => score / max);
+}
+
+function parseGoldBlocks(value: string) {
+  return Array.from(new Set(value.split(/[\s,，;；]+/).map((item) => item.trim()).filter(Boolean)));
+}
+
+function dcg(relevances: number[]) {
+  return relevances.reduce((sum, rel, index) => sum + rel / Math.log2(index + 2), 0);
+}
+
+function evaluateUploadedChunks(
+  chunks: RagChunk[],
+  query: string,
+  goldBlockInput: string,
+  retriever: Retriever,
+  tokenizerProfile: UploadTokenizerProfile,
+  topK: number
+): UploadEvaluationResult | null {
+  const trimmedQuery = query.trim();
+  if (!trimmedQuery || !chunks.length) return null;
+  const effectiveProfile = tokenizerProfile === 'auto'
+    ? (hasCjk(`${trimmedQuery} ${chunks.slice(0, 8).map((chunk) => chunk.text).join(' ')}`) ? 'cjk_2_4gram' : 'mixed')
+    : tokenizerProfile;
+  const docs = chunks.map((chunk) => tokenizeLocal(chunkSearchText(chunk), effectiveProfile));
+  const queryTokens = tokenizeLocal(trimmedQuery, effectiveProfile);
+  const bm25 = bm25Scores(queryTokens, docs);
+  const dense = docs.map((tokens) => cosineScore(queryTokens, tokens));
+  const bm25Norm = normalizeScores(bm25);
+  const denseNorm = normalizeScores(dense);
+  const scores = chunks.map((_chunk, index) => {
+    if (retriever === 'bm25') return bm25[index];
+    if (retriever === 'dense') return dense[index];
+    return 0.55 * bm25Norm[index] + 0.45 * denseNorm[index];
+  });
+  const goldBlockIds = parseGoldBlocks(goldBlockInput);
+  const gold = new Set(goldBlockIds);
+  const ranked = chunks
+    .map((chunk, index) => ({ chunk, score: scores[index] }))
+    .sort((left, right) => right.score - left.score)
+    .slice(0, topK)
+    .map((item, index) => {
+      const covered = item.chunk.source_blocks.filter((blockId) => gold.has(blockId));
+      return {
+        rank: index + 1,
+        chunk: item.chunk,
+        score: item.score,
+        relevant: covered.length > 0,
+        coveredGoldBlockIds: covered
+      };
+    });
+  const coveredGoldBlockIds = Array.from(new Set(ranked.flatMap((hit) => hit.coveredGoldBlockIds)));
+  const relevances = ranked.map((hit) => (hit.relevant ? 1 : 0));
+  const ideal = Array.from({ length: Math.min(topK, goldBlockIds.length) }, () => 1);
+  const firstRelevant = ranked.find((hit) => hit.relevant);
+  return {
+    hits: ranked,
+    recallAtK: goldBlockIds.length ? coveredGoldBlockIds.length / goldBlockIds.length : null,
+    hitAtK: goldBlockIds.length ? (coveredGoldBlockIds.length > 0 ? 1 : 0) : null,
+    mrr: goldBlockIds.length && firstRelevant ? 1 / firstRelevant.rank : goldBlockIds.length ? 0 : null,
+    ndcgAtK: goldBlockIds.length ? dcg(relevances) / Math.max(1, dcg(ideal)) : null,
+    coveredGoldBlockIds,
+    goldBlockIds,
+    tokenizerProfile: effectiveProfile
+  };
+}
+
 function App() {
   const [activePage, setActivePage] = useState<'upload' | 'evaluation'>('upload');
   const [overview, setOverview] = useState<Overview | null>(null);
@@ -930,12 +1115,125 @@ function ChunkResponseView({ response }: { response: ChunkAgentResponse }) {
         </div>
       )}
 
+      <UploadEvaluationPanel response={response} />
+
       <div className="chunk-list-output">
         {response.chunks.map((chunk, index) => (
           <ChunkCard key={chunk.chunk_id} chunk={chunk} index={index + 1} />
         ))}
       </div>
     </>
+  );
+}
+
+function UploadEvaluationPanel({ response }: { response: ChunkAgentResponse }) {
+  const [query, setQuery] = useState('');
+  const [goldBlocks, setGoldBlocks] = useState('');
+  const [retriever, setRetriever] = useState<Retriever>('bm25');
+  const [tokenizerProfile, setTokenizerProfile] = useState<UploadTokenizerProfile>('auto');
+  const [topK, setTopK] = useState(5);
+  const result = useMemo(
+    () => evaluateUploadedChunks(response.chunks, query, goldBlocks, retriever, tokenizerProfile, topK),
+    [response.chunks, query, goldBlocks, retriever, tokenizerProfile, topK]
+  );
+  const queryCount = response.chunks.reduce((sum, chunk) => sum + chunk.source_blocks.length, 0);
+
+  return (
+    <section className="upload-eval-panel">
+      <div className="upload-eval-head">
+        <div className="section-heading">
+          <Search size={18} />
+          <h2>当前分段评估</h2>
+        </div>
+        <span>{response.chunks.length} chunks · {queryCount} source blocks</span>
+      </div>
+
+      <div className="upload-eval-controls">
+        <label className="field-block eval-query-field">
+          <span>Query</span>
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="输入要检索的问题或关键词"
+          />
+        </label>
+        <label className="field-block">
+          <span>Retriever</span>
+          <select value={retriever} onChange={(event) => setRetriever(event.target.value as Retriever)}>
+            <option value="bm25">BM25</option>
+            <option value="dense">Dense-lite</option>
+            <option value="hybrid">Hybrid</option>
+          </select>
+        </label>
+        <label className="field-block">
+          <span>Profile</span>
+          <select
+            value={tokenizerProfile}
+            onChange={(event) => setTokenizerProfile(event.target.value as UploadTokenizerProfile)}
+          >
+            <option value="auto">Auto</option>
+            <option value="mixed">Mixed</option>
+            <option value="english">English</option>
+            <option value="cjk_2_4gram">中文 2-4gram</option>
+          </select>
+        </label>
+        <label className="field-block">
+          <span>Top K</span>
+          <input
+            type="number"
+            min={1}
+            max={20}
+            value={topK}
+            onChange={(event) => setTopK(Math.min(20, Math.max(1, Number(event.target.value) || 5)))}
+          />
+        </label>
+        <label className="field-block eval-gold-field">
+          <span>Gold Blocks</span>
+          <input
+            value={goldBlocks}
+            onChange={(event) => setGoldBlocks(event.target.value)}
+            placeholder="可选：block_id，用逗号或空格分隔"
+          />
+        </label>
+      </div>
+
+      {result ? (
+        <>
+          <div className="result-strip upload-eval-strip">
+            <ResultMetric label={`Recall@${topK}`} value={result.recallAtK === null ? '-' : format(result.recallAtK)} />
+            <ResultMetric label={`Hit@${topK}`} value={result.hitAtK === null ? '-' : format(result.hitAtK)} />
+            <ResultMetric label="MRR" value={result.mrr === null ? '-' : format(result.mrr)} />
+            <ResultMetric label={`nDCG@${topK}`} value={result.ndcgAtK === null ? '-' : format(result.ndcgAtK)} />
+            <ResultMetric label="Profile" value={result.tokenizerProfile} />
+          </div>
+          <div className="upload-eval-hits">
+            {result.hits.map((hit) => (
+              <article className={`upload-eval-hit ${hit.relevant ? 'relevant' : ''}`} key={`${hit.rank}-${hit.chunk.chunk_id}`}>
+                <div className="hit-title">
+                  <span className="rank">#{hit.rank}</span>
+                  <span>{hit.chunk.title_path.length ? hit.chunk.title_path.join(' > ') : hit.chunk.chunk_id}</span>
+                  {hit.relevant && <CircleDot size={14} />}
+                </div>
+                <p>{hit.chunk.text.slice(0, 360)}</p>
+                <div className="hit-foot">
+                  <span>score {format(hit.score)}</span>
+                  <span>{hit.chunk.token_count} tokens</span>
+                  <span>{hit.chunk.source_blocks.length} blocks</span>
+                </div>
+                <div className="source-row">
+                  {hit.chunk.source_blocks.slice(0, 8).map((blockId) => (
+                    <code className={result.goldBlockIds.includes(blockId) ? 'gold-source' : ''} key={blockId}>{blockId}</code>
+                  ))}
+                  {hit.chunk.source_blocks.length > 8 && <code>+{hit.chunk.source_blocks.length - 8}</code>}
+                </div>
+              </article>
+            ))}
+          </div>
+        </>
+      ) : (
+        <div className="empty-state upload-eval-empty">等待输入 query</div>
+      )}
+    </section>
   );
 }
 

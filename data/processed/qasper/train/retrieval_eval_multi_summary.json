@@ -1,6 +1,7 @@
 {
   "gold_evidence_path": "data\\processed\\qasper\\train\\gold_evidence.jsonl",
   "output_dir": "data\\processed\\qasper\\train",
+  "retrieval_profile": "default",
   "strategies": [
     "fixed",
     "recursive",
@@ -30,7 +31,9 @@
         "text"
       ],
       "retriever_config": {
-        "retriever": "bm25"
+        "retriever": "bm25",
+        "include_metadata": false,
+        "tokenizer_profile": "mixed"
       },
       "metric_definitions": {
         "recall@k": "Mean block-level evidence recall: covered gold_block_ids in top-k chunks divided by all gold_block_ids.",
@@ -78,6 +81,7 @@
         "include_metadata": false,
         "svd_dim": 128,
         "local_files_only": true,
+        "tokenizer_profile": "mixed",
         "warning": null,
         "faiss_index": "IndexFlatIP",
         "embedding_dim": 49
@@ -123,6 +127,7 @@
       "retriever_config": {
         "retriever": "hybrid",
         "alpha_bm25": 0.55,
+        "tokenizer_profile": "mixed",
         "dense": {
           "encoder_request": "tfidf_svd",
           "encoder_name": "tfidf_svd",
@@ -130,6 +135,7 @@
           "include_metadata": false,
           "svd_dim": 128,
           "local_files_only": true,
+          "tokenizer_profile": "mixed",
           "warning": null,
           "faiss_index": "IndexFlatIP",
           "embedding_dim": 49
@@ -174,7 +180,9 @@
         "text"
       ],
       "retriever_config": {
-        "retriever": "bm25"
+        "retriever": "bm25",
+        "include_metadata": false,
+        "tokenizer_profile": "mixed"
       },
       "metric_definitions": {
         "recall@k": "Mean block-level evidence recall: covered gold_block_ids in top-k chunks divided by all gold_block_ids.",
@@ -222,6 +230,7 @@
         "include_metadata": false,
         "svd_dim": 128,
         "local_files_only": true,
+        "tokenizer_profile": "mixed",
         "warning": null,
         "faiss_index": "IndexFlatIP",
         "embedding_dim": 51
@@ -267,6 +276,7 @@
       "retriever_config": {
         "retriever": "hybrid",
         "alpha_bm25": 0.55,
+        "tokenizer_profile": "mixed",
         "dense": {
           "encoder_request": "tfidf_svd",
           "encoder_name": "tfidf_svd",
@@ -274,6 +284,7 @@
           "include_metadata": false,
           "svd_dim": 128,
           "local_files_only": true,
+          "tokenizer_profile": "mixed",
           "warning": null,
           "faiss_index": "IndexFlatIP",
           "embedding_dim": 51
@@ -318,7 +329,9 @@
         "text"
       ],
       "retriever_config": {
-        "retriever": "bm25"
+        "retriever": "bm25",
+        "include_metadata": false,
+        "tokenizer_profile": "mixed"
       },
       "metric_definitions": {
         "recall@k": "Mean block-level evidence recall: covered gold_block_ids in top-k chunks divided by all gold_block_ids.",
@@ -366,6 +379,7 @@
         "include_metadata": false,
         "svd_dim": 128,
         "local_files_only": true,
+        "tokenizer_profile": "mixed",
         "warning": null,
         "faiss_index": "IndexFlatIP",
         "embedding_dim": 100
@@ -411,6 +425,7 @@
       "retriever_config": {
         "retriever": "hybrid",
         "alpha_bm25": 0.55,
+        "tokenizer_profile": "mixed",
         "dense": {
           "encoder_request": "tfidf_svd",
           "encoder_name": "tfidf_svd",
@@ -418,6 +433,7 @@
           "include_metadata": false,
           "svd_dim": 128,
           "local_files_only": true,
+          "tokenizer_profile": "mixed",
           "warning": null,
           "faiss_index": "IndexFlatIP",
           "embedding_dim": 100
@@ -462,7 +478,9 @@
         "text"
       ],
       "retriever_config": {
-        "retriever": "bm25"
+        "retriever": "bm25",
+        "include_metadata": false,
+        "tokenizer_profile": "mixed"
       },
       "metric_definitions": {
         "recall@k": "Mean block-level evidence recall: covered gold_block_ids in top-k chunks divided by all gold_block_ids.",
@@ -510,6 +528,7 @@
         "include_metadata": false,
         "svd_dim": 128,
         "local_files_only": true,
+        "tokenizer_profile": "mixed",
         "warning": null,
         "faiss_index": "IndexFlatIP",
         "embedding_dim": 61
@@ -555,6 +574,7 @@
       "retriever_config": {
         "retriever": "hybrid",
         "alpha_bm25": 0.55,
+        "tokenizer_profile": "mixed",
         "dense": {
           "encoder_request": "tfidf_svd",
           "encoder_name": "tfidf_svd",
@@ -562,6 +582,7 @@
           "include_metadata": false,
           "svd_dim": 128,
           "local_files_only": true,
+          "tokenizer_profile": "mixed",
           "warning": null,
           "faiss_index": "IndexFlatIP",
           "embedding_dim": 61
