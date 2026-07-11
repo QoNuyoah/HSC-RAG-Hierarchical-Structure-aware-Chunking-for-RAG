@@ -109,6 +109,34 @@ export interface ChunkAgentResponse {
   report: Record<string, any>;
 }
 
+export interface LangChainAgentRequest {
+  instruction: string;
+  document: GovernedDocument;
+  strategy?: Strategy;
+  config?: Record<string, unknown>;
+  include_report?: boolean;
+  preferred_tool?: string;
+  llm_provider?: 'mock' | 'openai_compatible';
+  llm_model?: string;
+  llm_base_url?: string;
+  llm_api_key_env?: string;
+  llm_temperature?: number;
+  llm_timeout_seconds?: number;
+  llm_use_response_format?: boolean;
+}
+
+export interface LangChainAgentResponse {
+  agent: string;
+  provider: 'mock' | 'openai_compatible';
+  model?: string | null;
+  instruction: string;
+  selected_tool?: string | null;
+  answer: string;
+  tool_trace: Array<Record<string, unknown>>;
+  result: Record<string, any>;
+  warnings: string[];
+}
+
 export interface MetricRow {
   strategy: Strategy;
   retriever: Retriever;
@@ -223,6 +251,16 @@ export function getComparison(queryId: string, retriever: Retriever) {
 
 export function postChunk(payload: ChunkAgentRequest) {
   return request<ChunkAgentResponse>('/api/v1/chunk', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8'
+    },
+    body: JSON.stringify(payload)
+  });
+}
+
+export function postChunkAndEnrich(payload: LangChainAgentRequest) {
+  return request<LangChainAgentResponse>('/api/v1/agent/run', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json; charset=utf-8'
