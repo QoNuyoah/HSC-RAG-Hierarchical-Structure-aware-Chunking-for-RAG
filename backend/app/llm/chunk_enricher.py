@@ -54,6 +54,7 @@ class ChunkSemanticEnricher:
             "the chunk for downstream RAG consumption: faithful summary, topic "
             "tags, entity tags, semantic integrity score, and quality reasons. "
             "Use only evidence in the given chunk. Do not invent facts. "
+            "Your answer's language must match the language of the original chunk text."
             "Return one strict JSON object."
         )
         schema_hint = {
