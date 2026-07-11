@@ -9,27 +9,28 @@
 | 项目 | 值 |
 |---|---|
 | 输入文件 | `data\processed\qasper\train\chunks_hsc_rag.jsonl` |
-| 输出文件 | `data\processed\qasper\train\chunks_hsc_rag_llm_enriched.jsonl` |
+| 输出文件 | `runs\llm_enrichment\chunks_retry.jsonl` |
 | QA 输出 | `未启用` |
 | Provider | `openai_compatible` |
-| Model | `Qwen/Qwen3-VL-32B-Instruct` |
+| Model | `Qwen/Qwen3-8B` |
 | Prompt Version | `hsc-rag-enrich-v1` |
-| 处理 chunk 数 | 20 |
+| 处理 chunk 数 | 3 |
 | QA/指令样例数 | 0 |
 
 ## 指标摘要
 
 | 指标 | 均值 |
 |---|---:|
-| 语义完整性评分 /5 | 4.79 |
-| 摘要忠实度评分 /5 | 5.00 |
-| 标签准确性评分 /5 | 4.99 |
+| 语义完整性评分 /5 | 4.60 |
+| 摘要忠实度评分 /5 | 4.57 |
+| 标签准确性评分 /5 | 4.50 |
 
 faithfulness risk 分布：
 
 ```json
 {
-  "low": 20
+  "low": 2,
+  "medium": 1
 }
 ```
 
@@ -37,7 +38,8 @@ Provider execution 分布：
 
 ```json
 {
-  "remote_llm_call": 20
+  "fallback_after_provider_error": 1,
+  "remote_llm_call": 2
 }
 ```
 
@@ -45,11 +47,9 @@ Provider execution 分布：
 
 | chunk_id | 风险 | 语义完整 | 摘要忠实 | 标签 | 摘要 |
 |---|---|---:|---:|---|---|
-| qasper_train_1909.00694_hsc_rag_chunk_00001 | low | 4.8 | 5.0 | affective event recognition, sentiment polarity, discourse relations, natural language processing | The paper addresses the challenge of recognizing affective events with positive or negative sentiment in ... |
-| qasper_train_1909.00694_hsc_rag_chunk_00002 | low | 4.8 | 5.0 | affective event learning, sentiment analysis, label propagation, event-level polarity | The chunk discusses the distinction between sentiment analysis and affective event learning, emphasizing that ... |
-| qasper_train_1909.00694_hsc_rag_chunk_00003 | low | 4.8 | 5.0 | polarity function, neural network, event sentiment, discourse relations | The proposed method aims to learn a polarity function p(x) for predicting sentiment scores of events using a ... |
-| qasper_train_1909.00694_hsc_rag_chunk_00004 | low | 4.8 | 5.0 | discourse relation-based event pairs, polarity scoring, loss functions, event pair classification | The proposed method uses discourse relation-based event pairs (AL, CA, CO) to assign polarity scores to ... |
-| qasper_train_1909.00694_hsc_rag_chunk_00005 | low | 4.8 | 5.0 | dataset construction, Japanese web corpus, event pair extraction, discourse relations | The chunk describes the dataset construction process for AL, CA, and CO, using a Japanese web corpus and the ... |
+| qasper_train_1909.00694_hsc_rag_chunk_00001 | medium | 4.3 | 4.7 | Abstract, Introduction, paragraph, polarity | [Abstract] Recognizing affective events that trigger positive or negative sentiment has a wide range of ... |
+| qasper_train_1909.00694_hsc_rag_chunk_00002 | low | 5.0 | 5.0 | Sentiment Analysis, Affective Events, Label Propagation, Event-Level Polarities | Learning affective events is closely related to sentiment analysis, but whereas sentiment analysis focuses on ... |
+| qasper_train_1909.00694_hsc_rag_chunk_00003 | low | 4.5 | 4.0 | Polarity Function, Discourse Relations, Event Pairs, Neural Network | The proposed method learns a polarity function $p(x)$ to predict sentiment scores of events using a neural ... |
 
 ## 与任务书要求的对应关系
 

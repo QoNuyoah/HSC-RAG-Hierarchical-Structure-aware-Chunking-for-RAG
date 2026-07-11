@@ -9,8 +9,8 @@
   "matched_evidence_items": 93,
   "evidence_match_rate": 0.9893617021276596,
   "warnings": [],
-  "zip_path": "E:\\practical_training\\HSC_RAG\\QASPER.zip",
-  "output_dir": "E:\\practical_training\\HSC_RAG\\data\\processed\\qasper\\train",
+  "zip_path": "D:\\cs\\HSC-RAG-Hierarchical-Structure-aware-Chunking-for-RAG\\dataset\\QASPER.zip",
+  "output_dir": "D:\\cs\\HSC-RAG-Hierarchical-Structure-aware-Chunking-for-RAG\\data\\processed\\qasper\\train",
   "limit_docs": 5,
   "artifacts": {
     "governed_documents": "governed_documents.jsonl",
