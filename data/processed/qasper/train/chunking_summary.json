@@ -102,38 +102,37 @@
       "input_path": "data\\processed\\qasper\\train\\governed_documents.jsonl",
       "output_path": "data\\processed\\qasper\\train\\chunks_hsc_rag.jsonl",
       "documents": 5,
-      "chunks": 62,
+      "chunks": 41,
       "total_tokens": 23598,
-      "avg_tokens": 380.61,
-      "min_tokens": 140,
+      "avg_tokens": 575.56,
+      "min_tokens": 130,
       "max_tokens": 900,
       "quality_flag_counts": {
         "final_flush": 5,
-        "hsc_boundary_scored": 57,
-        "hsc_structure_aware": 62,
-        "length_ok": 60,
-        "max_length_boundary": 3,
-        "mixed_title_paths": 19,
+        "hsc_adaptive_boundary": 41,
+        "hsc_boundary_scored": 36,
+        "hsc_structure_aware": 41,
+        "length_ok": 39,
+        "max_length_boundary": 9,
+        "mixed_title_paths": 22,
         "protected_block_intact": 5,
-        "section_boundary_respected": 51,
-        "semantic_boundary": 3,
-        "semantic_shift_observed": 6,
+        "section_boundary_respected": 27,
+        "semantic_shift_observed": 2,
         "short_chunk": 2,
-        "source_anchor_complete": 62,
-        "title_path_consistent": 36
+        "source_anchor_complete": 41,
+        "title_path_consistent": 11
       },
       "boundary_score_summary": {
-        "scored_boundaries": 57,
-        "chunk_coverage_rate": 0.9194,
-        "avg_boundary_score": 0.7312,
-        "max_boundary_score": 0.877,
-        "avg_semantic_distance": 0.5673,
-        "avg_semantic_similarity": 0.4327,
-        "semantic_boundary_triggered": 3,
+        "scored_boundaries": 36,
+        "chunk_coverage_rate": 0.878,
+        "avg_boundary_score": 0.7311,
+        "max_boundary_score": 0.897,
+        "avg_semantic_distance": 0.5848,
+        "avg_semantic_similarity": 0.4152,
+        "semantic_boundary_triggered": 0,
         "split_reason_counts": {
-          "max_length_boundary": 3,
-          "section_boundary_respected": 51,
-          "semantic_boundary": 3
+          "max_length_boundary": 9,
+          "section_boundary_respected": 27
         }
       },
       "config": {
@@ -143,6 +142,7 @@
         "include_title_context": true,
         "merge_short_chunks": true,
         "protect_blocks": true,
+        "adaptive_boundary": true,
         "semantic_boundary_scoring": true,
         "semantic_boundary_threshold": 0.62,
         "semantic_soft_boundary_threshold": 0.52,
@@ -150,7 +150,9 @@
         "semantic_window_blocks": 3,
         "structure_signal_weight": 0.45,
         "semantic_signal_weight": 0.35,
-        "length_signal_weight": 0.2
+        "length_signal_weight": 0.2,
+        "chunking_profile": "default",
+        "chunking_profile_overrides": {}
       },
       "warnings": []
     }
